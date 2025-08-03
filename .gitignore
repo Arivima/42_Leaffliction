@@ -1,7 +1,8 @@
 .DS_Store
 
 # Project related
-data/
+images/
+plots/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

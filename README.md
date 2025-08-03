@@ -69,12 +69,13 @@ __pycache__/
 *.pyc
 
 # Datasets
-data/
+images/
+plots/
 
 # Lock file should be committed
 !uv.lock
 ```
 ## TODO
 - install and set up pre-commit
-
+- add ruff limit 79 cols
 
