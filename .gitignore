@@ -2,6 +2,7 @@
 
 # Project related
 images/
+images_augmented/
 plots/
 
 # Byte-compiled / optimized / DLL files
