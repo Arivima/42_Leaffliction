@@ -23,7 +23,7 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-AUGMENTED_OUTPUT_DIR = "images_augmented"
+# AUGMENTED_OUTPUT_DIR = "images_augmented"
 
 
 def open_image(image_path: str) -> np.ndarray:
