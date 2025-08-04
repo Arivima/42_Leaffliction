@@ -1,12 +1,25 @@
 # 42_Leaffliction
 Computer vision project : Image classification by disease recognition on leaves
+
+## CURRENT STATUS
+- Distribution.py ok
+- Augmentation.py wip
+- Transformation.py to do
+- ./train.py to do
+- ./predict.py to do
+
+## TODO
+- install and set up pre-commit to automate ruff before commit
+- add ruff limit 79 cols
+
 ## Requirements
 - python 3.10.13
 - uv
 ## Quickstart
-```
-uv sync
-uv run script.py # or any other script
+This project uses uv to handle dependencies and virtual env
+```bash
+uv sync # equivalent to pip install .
+uv run scripts/my_script.py
 ```
 Under the hood, `uv` will:
 - create .venv
@@ -37,7 +50,7 @@ Python 3.10.13
 ```
 **Install dependencies**
 ```bash
-uv add ruff
+uv add ruff # for example
 uv sync
 ```
 **Run a script**
@@ -57,6 +70,10 @@ uv run ruff check . --fix
 ```bash
 uv run ruff format .
 ```
+Can also be done through vscode shortcut : Cmd + Shif + P
+- Ruff : Format document
+- Ruff : Format imports
+- Ruff : Fix all auto-fixable problems
 **Add .gitignore**  
 ```gitignore
 # Virtualenv
@@ -70,12 +87,10 @@ __pycache__/
 
 # Datasets
 images/
+images_augmented/
 plots/
 
 # Lock file should be committed
 !uv.lock
 ```
-## TODO
-- install and set up pre-commit
-- add ruff limit 79 cols
 
