@@ -16,6 +16,7 @@ Computer vision project : Image classification by disease recognition on leaves
 - python 3.10.13
 - uv
 ## Quickstart
+### Install project
 This project uses uv to handle dependencies and virtual env
 ```bash
 uv sync # equivalent to pip install .
@@ -25,7 +26,31 @@ Under the hood, `uv` will:
 - create .venv
 - install dependencies from uv.lock
 - make sure the project uses the pinned python version (.python-version)
-## Full set-up
+### Project structure
+```bash
+➜  42_Leaffliction git:(main) tree -L 2  
+.
+├── en.subject.pdf
+├── images # original data : can be named whatever but needs to have this structure
+│   ├── Apple
+│   └── Grape
+├── images_augmented # augmented data : this needs to be copied from original data as the Augmentation.py will modify in-place
+│   ├── Apple
+│   └── Grape
+├── LICENSE
+├── plots # this will be created by Distribution.py
+│   ├── Apple_combined_chart.png
+│   └── Grape_combined_chart.png
+├── pyproject.toml
+├── README.md
+├── scripts
+│   ├── Augmentation.py
+│   ├── Distribution.py
+│   └── utils
+└── uv.lock
+```
+
+## Full set-up flow used to create this project from scratch
 #### **Install `uv`**
 ```bash
 pipx install uv
