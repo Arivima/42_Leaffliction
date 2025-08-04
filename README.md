@@ -26,15 +26,15 @@ Under the hood, `uv` will:
 - install dependencies from uv.lock
 - make sure the project uses the pinned python version (.python-version)
 ## Full set-up
-**Install `uv`**
+#### **Install `uv`**
 ```bash
 pipx install uv
 ```
-**Initialize project**
+#### **Initialize project**
 ```bash
 uv init
 ```
-**Set Python version**
+#### **Set Python version**
 ```bash
 uv python install 3.10.13
 uv python pin 3.10.13
@@ -48,16 +48,16 @@ pyenv which python
 python --version
 Python 3.10.13
 ```
-**Install dependencies**
+#### **Install dependencies**
 ```bash
 uv add ruff # for example
 uv sync
 ```
-**Run a script**
+#### **Run a script**
 ```bash
 uv run script.py
 ```
-**Use ruff for linting and format**
+#### **Use ruff for linting and format**
 - Check linting issues
 ```bash
 uv run ruff check .
@@ -70,11 +70,12 @@ uv run ruff check . --fix
 ```bash
 uv run ruff format .
 ```
-Can also be done through vscode shortcut : Cmd + Shif + P
+Can also be done through vscode shortcut : `Cmd` + `Shift` + `P`
 - Ruff : Format document
 - Ruff : Format imports
-- Ruff : Fix all auto-fixable problems
-**Add .gitignore**  
+- Ruff : Fix all auto-fixable problems  
+
+#### **Add .gitignore**  
 ```gitignore
 # Virtualenv
 .venv/
