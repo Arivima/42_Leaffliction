@@ -1,19 +1,39 @@
 """
 Augmentation.py
+
 A program that generate 6 types of data augmentation for each image given as input.
 Displays to screen and saves to a local directory (prefixed with original file name).
-Types of augmentation: Flip, Rotate, Skew, Shear, Crop, Distortion
+Optionnally deactivate display and only process images.
+
 Use :
 `$> uv run scripts/Augmentation.py images_augmented/Apple/Apple_healthy/image\ \(1\).JPG`
-https://www.geeksforgeeks.org/python/python-opencv-cheat-sheet/
-https://github.com/Jacob12138xieyuan/opencv-python-cheat-sheet/blob/master/opencv-python%20cheetsheet.ipynb
-https://docs.opencv.org/4.x/da/d6e/tutorial_py_geometric_transformations.html
-https://www.comet.com/site/blog/opencv-python-cheat-sheet-from-importing-images-to-face-detection/
+`$> uv run scripts/Augmentation.py --no-display images_augmented/Apple/Apple_healthy/image\ \(1\).JPG`
+
+Ressources:
+- https://thepythoncode.com/article/image-transformations-using-opencv-in-python
+- https://www.geeksforgeeks.org/python/python-opencv-cheat-sheet/
+- https://github.com/Jacob12138xieyuan/opencv-python-cheat-sheet/blob/master/opencv-python%20cheetsheet.ipynb
+- https://docs.opencv.org/4.x/da/d6e/tutorial_py_geometric_transformations.html
+- https://www.comet.com/site/blog/opencv-python-cheat-sheet-from-importing-images-to-face-detection/
+
+Types of augmentation included:
+- Translation : linear transformation - shifts image towards a direction
+- *Reflection : linear transformation - flips image along an axis
+- Rotation : linear transformation - rotates around the center
+- Shearing : linear transformation - skews the image by displacing pixels in one direction based on their position in another (creates a slanted effect).
+- *Scaling : Linear transformation - enlarges (zoom) or shrinks the image by multiplying pixel positions by a scalar. Does not affect dimensions.
+- *Distort : Non-linear warping — modifies the geometry of the image using a non-linear function, often mimicking lens distortion effects (e.g. barrel, fisheye).
+- Cropping : Operation that cuts out image borders or a region; reduces size.
+- *Resizing : Changes image dimensions via interpolation; affects resolution but preserves content.
+- Blurring : Convolution operation that smooths the image by averaging nearby pixels.
+- Constrast : Enhances the difference between light and dark areas.
+- *Lighten : Increases overall brightness by adding intensity to pixels.
+
+* Need to be activated manually
 """
 
 import argparse
 import os
-import random
 import sys
 
 import cv2
@@ -23,124 +43,276 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# AUGMENTED_OUTPUT_DIR = "images_augmented"
+
+def is_valid_image_path(path: str) -> bool:
+    ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"}
+    ext = os.path.splitext(path)[1].lower()
+    return ext in ALLOWED_EXTENSIONS
+
+
+def is_safe_path(base_dir: str, path: str) -> bool:
+    real_base = os.path.abspath(base_dir)
+    real_path = os.path.abspath(path)
+    return real_path.startswith(real_base)
 
 
 def open_image(image_path: str) -> np.ndarray:
     """Loads the image at `image_path` to a np.ndarray"""
+    logger.info(f"Processing image at path '{image_path}'")
+    if not is_valid_image_path(path=image_path):
+        raise ValueError("Invalid file extension.")
+
+    if not is_safe_path('images', image_path):
+        raise ValueError(f"Image path '{image_path}' is outside allowed directory.")
+
     if not os.path.isfile(image_path):
-        raise NotADirectoryError(f"'{image_path}' is not at a valid path.")
+        raise FileNotFoundError(f"Image '{image_path}' not found.")
 
     image = cv2.imread(image_path)
+
     if image is None:
         raise ValueError(f"Image file {image_path} could not be read.")
 
     logger.info(f"image.shape: {image.shape}")
-    logger.info(f"image.size: {image.size}")
     logger.info(f"type(image): {type(image)}")
     logger.info(f"image.dtype: {image.dtype}")
 
     return image
 
 
-# def flip_image(image: np.ndarray) -> np.ndarray:
-#     """returns a flipped image - horizontal axis"""
-#     logger.debug("flip_image")
-#     return cv2.flip(image, 1)
-
-
-def blur_image(image: np.ndarray) -> np.ndarray:
+def translate_image(image: np.ndarray, tx: int = 50, ty: int = 50) -> np.ndarray:
     """
-    returns a blurred image
-    https://docs.opencv.org/4.x/d4/d13/tutorial_py_filtering.html
+    Image translation is the rectilinear shift of an image from one location to another, so the shifting of an object is called translation.
+    https://thepythoncode.com/article/image-transformations-using-opencv-in-python
+        # alternative
+        matrix = np.float32([
+            [1, 0, tx],
+            [0, 1, ty],
+            [0, 0, 1]
+            ])
+        return cv2.warpPerspective(image, matrix, (w, h), borderValue=(255, 255, 255))
+    tx, ty : (int) translation factor for x, y
+    Returns: (np.ndarray) a translated image.
     """
-    logger.debug("blur_image")
-    return cv2.blur(image, (5, 5))
-
-
-def rotate_image(image: np.ndarray) -> np.ndarray:
-    """
-    returns a rotated image - 45°
-    https://www.geeksforgeeks.org/python/python-opencv-cheat-sheet/
-    """
-    logger.debug("rotate_image")
     h, w = image.shape[:2]
-    c = (w // 2, h // 2)
-    a = 45
-    s = 1.0  # no scaling
-    rotation_matrix = cv2.getRotationMatrix2D(center=c, angle=a, scale=s)
-    rotated = cv2.warpAffine(
-        image, rotation_matrix, (w, h), borderValue=(255, 255, 255)
+    matrix = np.float32(
+        [
+            [1, 0, tx],
+            [0, 1, ty],
+        ]
     )
+    translated = cv2.warpAffine(image, matrix, (w, h), borderValue=(255, 255, 255))
+    logger.info(f'translate_image {translated.shape}')
+    return translated
+
+
+def flip_image(image: np.ndarray) -> np.ndarray:
+    """
+    Image reflection (or mirroring) is useful for flipping an image,
+    it can flip the image vertically as well as horizontally.
+    Here we flip the image along the horizontal axis.
+    https://thepythoncode.com/article/image-transformations-using-opencv-in-python#Image_Reflection
+        # alternative
+        1 . Equilvalent to image = cv2.flip(image, 1)
+        2. x-axis reflection - built-in : cv2.flip(image, 0)
+        matrix = np.float32([[1,  0, 0],
+                            [0, -1, h],
+                            [0,  0, 1]])
+        3. y-axis reflection - built-in : cv2.flip(image, 1)
+        M = np.float32([[-1, 0, w],
+                        [ 0, 1, 0],
+                        [ 0, 0, 1]])
+        return cv2.warpPerspective(image, matrix,(int(w),int(h)))
+    Returns: (np.ndarray) a flipped image along the horizontal axis.
+    """
+    h, w = image.shape[:2]
+    matrix = np.float32(
+        [
+            [1, 0, 0],
+            [0, -1, h],
+        ]
+    )
+    flipped = cv2.warpAffine(image, matrix, (w, h), borderValue=(255, 255, 255))
+    logger.info(f'flip_image {flipped.shape}')
+    return flipped
+
+
+def rotate_image(image: np.ndarray, angle: int = 215) -> np.ndarray:
+    """
+    Image Rotation : returns a rotated image by specified angle
+    rotation : motion of a certain space that preserves at least one point
+    https://thepythoncode.com/article/image-transformations-using-opencv-in-python#Image_Rotation
+    https://www.geeksforgeeks.org/python/python-opencv-cheat-sheet/
+        # alternative
+        h, w = image.shape[:2]
+        c = (w // 2, h // 2)
+        s = 1.0  # no scaling
+        matrix = cv2.getRotationMatrix2D(center=c, angle=angle, scale=s)
+        return cv2.warpAffine(image, matrix, (w, h), borderValue=(255, 255, 255))
+    Returns: (np.ndarray) a rotated image by `angle` degrees.
+    """
+    h, w = image.shape[:2]
+    cx, cy = w / 2, h / 2
+    theta = np.radians(-angle)
+    cos, sin = np.cos(theta), np.sin(theta)
+    matrix = np.array(
+        [[cos, -sin, (1 - cos) * cx + sin * cy], [sin, cos, (1 - cos) * cy - sin * cx]],
+        dtype=np.float32,
+    )
+    rotated = cv2.warpAffine(image, matrix, (w, h), borderValue=(255, 255, 255))
+    logger.info(f'rotate_image {rotated.shape}')
     return rotated
 
 
-def skew_image(image: np.ndarray) -> np.ndarray:
+def shear_image(image: np.ndarray, sx: int = 0.5, sy: int = 0.0) -> np.ndarray:
     """
-    returns a skewed image
+    Shear mapping is a linear map that displaces each point in a fixed direction,
+    it substitutes every point horizontally or vertically by a specific value in
+    proportion to its x or y coordinates, there are two types of shearing effects.
+    Default values shear in the x direction.
+    https://thepythoncode.com/article/image-transformations-using-opencv-in-python#Image_Shearing
     https://www.geeksforgeeks.org/python/python-opencv-cheat-sheet/
+    sx, sy : (float) shearing factor for x, y
+    Returns: (np.ndarray) a sheared image.
     """
-    logger.debug("skew_image")
     h, w = image.shape[:2]
-    pts1 = np.float32([[0, 0], [w, 0], [0, h]])
-    delta = random.uniform(-0.3, 0.3) * w
-    pts2 = np.float32([[delta, 0], [w + delta, 0], [0, h]])
-    M = cv2.getAffineTransform(pts1, pts2)
-    return cv2.warpAffine(image, M, (w, h))
+    matrix = np.array([[1, sx, 0], [sy, 1, 0]], dtype=np.float32)
+    sheared = cv2.warpAffine(image, matrix, (w, h), borderValue=(255, 255, 255))
+    logger.info(f'shear_image {sheared.shape}')
+    return sheared
 
 
-def shear_image(image: np.ndarray) -> np.ndarray:
+def scale_image(image: np.ndarray, sx: int = 0.5, sy: int = 0.5) -> np.ndarray:
     """
-    returns a sheared image
-    https://www.geeksforgeeks.org/python/python-opencv-cheat-sheet/
+    Image scaling is a process used to resize a image.
+    built-in function cv2.resize()
+    sx, sy : scaling factors for x, y (>1 zooming effect, < 1 shrinking effect)
+    Returns: (np.ndarray) a scaled image.
     """
-    logger.debug("shear_image")
     h, w = image.shape[:2]
-    shear_x = random.uniform(-0.3, 0.3)
-    shear_y = random.uniform(-0.3, 0.3)
-    M = np.float32([[1, shear_x, 0], [shear_y, 1, 0]])
-    return cv2.warpAffine(image, M, (w, h))
+    matrix = np.float32([[sx, 0, 0], [0, sy, 0]])
+    scaled = cv2.warpAffine(image, matrix, (w, h), borderValue=(255, 255, 255))
+    logger.info(f'scale_image {scaled.shape}')
+    return scaled
 
 
-def crop_image(image: np.ndarray) -> np.ndarray:
-    """returns a cropped image, resized to be ingested in training pipeline"""
-    logger.debug("crop_image")
+def crop_image(image: np.ndarray, ratio: float = 0.2) -> np.ndarray:
+    """
+    Image Cropping : returns a cropped image
+    ratio : (float) cropping ratio (0-1) to be removed
+    ! Needs to be resized to be ingested in training pipeline
+    Returns: (np.ndarray) a cropped image.
+    """
+    if not (0 <= ratio <= 1):
+        raise ValueError(
+            f"Invalid ratio : {ratio}. Should be between 0 and 1 excluded."
+        )
     h, w = image.shape[:2]
-    ratio = 0.15
+    ratio = ratio / 2
     top = int(h * ratio)
     bottom = int(h * (1 - ratio))
     left = int(w * ratio)
     right = int(w * (1 - ratio))
     cropped = image[top:bottom, left:right]
-    return cv2.resize(cropped, (w, h))
+    logger.info(f'crop_image {cropped.shape}')
+    return cropped
 
 
-def distord_image(image: np.ndarray) -> np.ndarray:
-    """returns a distorted image"""
-    logger.debug("distord_image")
+def resize_image(image: np.ndarray, sx: int = 0.5, sy: int = 0.5) -> np.ndarray:
+    """
+    Image Resize is a process used to resize a image.
+    built-in function cv2.resize()
+    sx, sy : scaling factors for x, y (>1 zooming effect, < 1 shrinking effect)
+    Returns: (np.ndarray) a scaled image.
+    """
     h, w = image.shape[:2]
-    mapy, mapx = np.indices((h, w), dtype=np.float32)
-    mapx = mapx + 20 * np.sin(mapy / 20.0)
-    mapy = mapy + 20 * np.cos(mapx / 20.0)
-    return cv2.remap(image, mapx, mapy, interpolation=cv2.INTER_LINEAR)
+    new_w = int(w * sx)
+    new_h = int(h * sy)
+    resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+    logger.info(f'resize_image {resized.shape}')
+    return resized
+
+def distort_image(image: np.ndarray, k: float = 0.5) -> np.ndarray:
+    """
+    Apply barrel distortion using distortion map and cv2.remap.
+    Image distortion : non linear transformation
+    k : (float) >0 -> barrel distortion, <0 -> pincushion distortion
+    Returns: (np.ndarray) a barrel distorted image.
+    """
+    h, w = image.shape[:2]
+    cx, cy = w / 2, h / 2
+
+    map_x = np.zeros((h, w), dtype=np.float32)
+    map_y = np.zeros((h, w), dtype=np.float32)
+
+    y, x = np.indices((h, w), dtype=np.float32)
+    dx = (x - cx) / w
+    dy = (y - cy) / h
+    r2 = dx**2 + dy**2
+    factor = 1 + k * r2
+    map_x = cx + dx * w * factor
+    map_y = cy + dy * h * factor
+
+    distorted = cv2.remap(
+        image, map_x, map_y, interpolation=cv2.INTER_LINEAR, borderValue=(255, 255, 255)
+    )
+    logger.info(f'distort_image {distorted.shape}')
+    return distorted
+
+
+
+def blur_image(image: np.ndarray, ksize: int = 5) -> np.ndarray:
+    """
+    Apply a blurring kernel to the image.
+    A blurring kernel is a small matrix used in convolution to compute
+    the new value of each pixel by averaging its neighborhood.
+    Replacing the center pixel with the average of itself and its 8 neighbors.
+    Kernel values are : 1 / (ksize * ksize), the sum of the kernel is 1
+    https://docs.opencv.org/4.x/d4/d13/tutorial_py_filtering.html
+    Equivalent to cv2.blur(image, (ksize, ksize))
+    ksize : (int) blurring factor
+    Returns: (np.ndarray) a blurred image.
+    """
+    kernel = np.ones((ksize, ksize), np.float32) / (ksize * ksize)
+    blurred = cv2.filter2D(image, -1, kernel)
+    logger.info(f'blur_image {blurred.shape}')
+    return blurred
 
 
 def contrast_image(image: np.ndarray, alpha: float = 2) -> np.ndarray:
     """
-    returns a constrasted image
+    Apply a formula on the pixel content to increase image constrast
+    Formula : new_pixel = clip(alpha * old_pixel + beta, 0, 255)
+    we cast to float32 to handle overflow before recasting to uint8
     https://www.tutorialspoint.com/how-to-change-the-contrast-and-brightness-of-an-image-using-opencv-in-python
+    Equivalent to cv2.convertScaleAbs(image, alpha=alpha, beta=0)
+    alpha : (float) Contrast factor - >1 increases, <1 reduces
+    beta : (int) Brightness offset - >0 lightens, <0 darkens
+    Returns: (np.ndarray) a contrasted image.
     """
-    logger.debug("contrast_image")
-    return cv2.convertScaleAbs(image, alpha=alpha, beta=0)
+    beta = 0
+    contrasted = image.astype(np.float32) * alpha + beta
+    contrasted = np.clip(contrasted, 0, 255)
+    logger.info(f'contrast_image {contrasted.shape}')
+    return contrasted.astype(np.uint8)
 
 
-# def lighten_image(image: np.ndarray, beta: int = 70) -> np.ndarray:
-#     """
-#     returns a lightened image
-#     https://www.tutorialspoint.com/how-to-change-the-contrast-and-brightness-of-an-image-using-opencv-in-python
-#     """
-#     logger.debug("lighten_image")
-#     return cv2.convertScaleAbs(image, alpha=1, beta=beta)
+def lighten_image(image: np.ndarray, beta: int = 70) -> np.ndarray:
+    """
+    Apply a formula on the pixel content to lighten the image
+    Formula : new_pixel = clip(alpha * old_pixel + beta, 0, 255)
+    we cast to float32 to handle overflow before recasting to uint8
+    https://www.tutorialspoint.com/how-to-change-the-contrast-and-brightness-of-an-image-using-opencv-in-python
+    Equivalent to cv2.convertScaleAbs(image, alpha=1, beta=beta)
+    alpha : (float) Contrast factor - >1 increases, <1 reduces
+    beta : (int) Brightness offset - >0 lightens, <0 darkens
+    Returns: (np.ndarray) a lightened image.
+    """
+    alpha = 1
+    lightened = image.astype(np.float32) * alpha + beta
+    lightened = np.clip(lightened, 0, 255)
+    logger.info(f'contrast_image {lightened.shape}')
+    return lightened.astype(np.uint8)
 
 
 def augment_image(original_image: np.ndarray) -> dict:
@@ -148,58 +320,33 @@ def augment_image(original_image: np.ndarray) -> dict:
     Takes an image and returns a dict with that image augmented in 6 different
     ways (key: augmentation type, value: augmented image)
     """
+    logger.info("Augmenting image")
 
     AUGMENTATIONS = {
-        # "flip": flip_image,
-        "rotate": rotate_image,
-        "skew": skew_image,
-        "shear": shear_image,
-        "crop": crop_image,
-        "distortion": distord_image,
-        "blur": blur_image,
-        "contrast": contrast_image,
-        # "lighten": lighten_image,
+        "Translate": translate_image,
+        # "Flip": flip_image,
+        "Rotate": rotate_image,
+        "Shear": shear_image,
+        # "Scale": scale_image,
+        "Crop": crop_image,
+        # "Resize": resize_image,
+        # "Distortion": distort_image,
+        "Blur": blur_image,
+        "Contrast": contrast_image,
+        # "Lighten": lighten_image,
     }
 
     augmented_images = {}
     augmented_images["original_image"] = original_image
-    for type, function in AUGMENTATIONS.items():
-        augmented_images[type] = function(original_image)
-
-    display_images(augmented_images)
+    for key, function in AUGMENTATIONS.items():
+        augmented_images[key] = function(original_image)
 
     return augmented_images
 
 
-def save_images(original_image_path: str, images: dict):
-    """Saves images to original image directory"""
-    # aug_img.save(os.path.join(base_dir, f"{base_name}_{name}.JPG"))
-
-    parts = os.path.split(original_image_path)
-    dir_path = parts[:-1]
-    base_name = parts[-1]
-    ext = os.path.splitext(original_image_path)
-
-    logger.debug(f"parts : {parts}")
-    logger.debug(f"dir_path : {dir_path}")
-    logger.debug(f"base_name : {base_name}")
-    logger.debug(f"ext : {ext}")
-
-    os.makedirs(dir_path, exist_ok=True)
-
-    for type, image in images.items():
-        filename = f"{base_name}_{type}.{ext}"
-        logger.debug(f"filename : {filename}")
-        image_path = os.path.join(dir_path, filename)
-
-        logger.info(f"Saving image to {image_path}")
-        success = cv2.imwrite(image_path, image)
-        if not success:
-            logger.error(f"Error while saving the image : {filename}")
-
-
 def display_images(images: dict):
     """Displays all augmented images side by side in one row"""
+    logger.info("Displaying augmented images")
     n = len(images)
     if n == 0:
         return
@@ -223,50 +370,69 @@ def display_images(images: dict):
     plt.show()
 
 
+def save_images(original_image_path: str, images: dict):
+    """Saves images to original image directory"""
+    first_split = os.path.split(original_image_path)
+    second_split = os.path.splitext(first_split[-1])
+    dir_path = first_split[0]
+    base_name = second_split[0]
+    ext = second_split[-1]
+    logger.info(f"Saving augmented images to '{dir_path}'")
+
+    os.makedirs(dir_path, exist_ok=True)
+
+    for key, image in images.items():
+        if key != 'original_image':
+            filename = f"{base_name}_{key}{ext}"
+            image_path = os.path.join(dir_path, filename)
+
+            success = cv2.imwrite(image_path, image)
+            if not success:
+                logger.error(f"Could not save image '{filename}'")
+                raise IOError(f"cv2.imwrite failed to save '{image_path}'")
+            else:
+                logger.info(f"Saved '{filename}'")
+
 def parse_args() -> argparse.Namespace:
     """Uses `argparse` to handle the arguments : image_path, output_dir"""
     parser = argparse.ArgumentParser(
         description="A program that generate 6 types of data augmentation for each image given as input."
     )
     parser.add_argument("image_path", help="Path to the image for input")
-    # parser.add_argument(
-    #     "output_dir",
-    #     help="Path to the augmented image destination for output",
-    #     default=AUGMENTED_OUTPUT_DIR,
-    #     required=False, ## CHECK IF BEST PRACTICE
-    # )
+    parser.add_argument("--no-display", action="store_true", help="Disable display")
     return parser.parse_args()
 
 
-## FOR NOW PROGRAM WILL BE EXECUTED WITH ONE SINGLE IMAGE
-## WILL HAVE ANOTHER/ADAPTATION FOR ALL IMAGES
 def main():
     try:
+
         logger.info("Starting Augmentation.py program")
+
         args = parse_args()
-        image_path = args.image_path  # should be a valid path
-        # output_dir = args.output_dir # if not a directory, will be created
-        # logger.debug(f"Arguments : output_dir {output_dir}")
+        image_path = args.image_path
 
-        ## CONTINUE PROTECTION AND TESTING INVALID ARGS
-
-        logger.info(f"Processing image at path '{image_path}'")
         image = open_image(image_path=image_path)
 
         augmented_images = augment_image(original_image=image)
+
+        if not args.no_display:
+            display_images(augmented_images)
+
+        save_images(original_image_path=image_path, images=augmented_images)
         return
 
-        ## DISPLAY AUGMENTED IMAGE 1 screen 7 cols, one row per image
-        display_images(augmented_images)
-
-        ## SAVE TO LOCAL DIR
-        ## RE_READ SUBJECT TO UNDERSTAND HOW TO STRUCTURE DIRECTORY
-        save_images(original_image_path=image_path, images=augmented_images)
-
-    except Exception as e:
-        logger.exception(f"An unexpected error occurred: {e}")
+    except FileNotFoundError as e:
+        logger.error(f"File error: {e}")
         sys.exit(1)
-
+    except ValueError as e:
+        logger.error(f"Invalid input: {e}")
+        sys.exit(2)
+    except KeyboardInterrupt:
+        logger.warning("Program interrupted by user.")
+        sys.exit(130)
+    except Exception as e:
+        logger.exception(f"Unexpected error: {type(e).__name__}: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
