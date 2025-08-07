@@ -344,7 +344,7 @@ def augment_image(original_image: np.ndarray) -> dict:
     return augmented_images
 
 
-def display_images(images: dict):
+def display_images(images: dict, save:bool=False, display:bool=True, filename:str="sample.jpg"):
     """Displays all augmented images side by side in one row"""
     # logger.info("Displaying augmented images")
     n = len(images)
@@ -367,7 +367,19 @@ def display_images(images: dict):
         ax.axis("off")
 
     plt.tight_layout()
-    plt.show()
+
+    output_dir = 'samples'
+    if save:
+        os.makedirs(output_dir, exist_ok=True)
+        save_path = os.path.join(output_dir, filename)
+        plt.savefig(save_path)
+        # logger.info(f"Saved figure to: {save_path}")
+
+    if display:
+        plt.show()
+    else:
+        plt.close()
+
 
 
 def save_images(original_image_path: str, images: dict):
