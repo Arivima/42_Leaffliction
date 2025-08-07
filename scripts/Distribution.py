@@ -27,7 +27,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 from plotly.subplots import make_subplots
-from utils.logger import get_logger
+from scripts.utils.logger import get_logger
 
 PLOT_OUTPUT_DIR = "plots"
 

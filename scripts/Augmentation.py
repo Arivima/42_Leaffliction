@@ -39,7 +39,7 @@ import sys
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
-from utils.logger import get_logger
+from scripts.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -58,7 +58,7 @@ def is_safe_path(base_dir: str, path: str) -> bool:
 
 def open_image(image_path: str) -> np.ndarray:
     """Loads the image at `image_path` to a np.ndarray"""
-    logger.info(f"Processing image at path '{image_path}'")
+    # logger.info(f"Processing image at path '{image_path}'")
     if not is_valid_image_path(path=image_path):
         raise ValueError("Invalid file extension.")
 
@@ -73,9 +73,9 @@ def open_image(image_path: str) -> np.ndarray:
     if image is None:
         raise ValueError(f"Image file {image_path} could not be read.")
 
-    logger.info(f"image.shape: {image.shape}")
-    logger.info(f"type(image): {type(image)}")
-    logger.info(f"image.dtype: {image.dtype}")
+    # logger.info(f"image.shape: {image.shape}")
+    # logger.info(f"type(image): {type(image)}")
+    # logger.info(f"image.dtype: {image.dtype}")
 
     return image
 
@@ -102,7 +102,7 @@ def translate_image(image: np.ndarray, tx: int = 50, ty: int = 50) -> np.ndarray
         ]
     )
     translated = cv2.warpAffine(image, matrix, (w, h), borderValue=(255, 255, 255))
-    logger.info(f'translate_image {translated.shape}')
+    # logger.info(f'translate_image {translated.shape}')
     return translated
 
 
@@ -133,7 +133,7 @@ def flip_image(image: np.ndarray) -> np.ndarray:
         ]
     )
     flipped = cv2.warpAffine(image, matrix, (w, h), borderValue=(255, 255, 255))
-    logger.info(f'flip_image {flipped.shape}')
+    # logger.info(f'flip_image {flipped.shape}')
     return flipped
 
 
@@ -160,7 +160,7 @@ def rotate_image(image: np.ndarray, angle: int = 215) -> np.ndarray:
         dtype=np.float32,
     )
     rotated = cv2.warpAffine(image, matrix, (w, h), borderValue=(255, 255, 255))
-    logger.info(f'rotate_image {rotated.shape}')
+    # logger.info(f'rotate_image {rotated.shape}')
     return rotated
 
 
@@ -178,7 +178,7 @@ def shear_image(image: np.ndarray, sx: int = 0.5, sy: int = 0.0) -> np.ndarray:
     h, w = image.shape[:2]
     matrix = np.array([[1, sx, 0], [sy, 1, 0]], dtype=np.float32)
     sheared = cv2.warpAffine(image, matrix, (w, h), borderValue=(255, 255, 255))
-    logger.info(f'shear_image {sheared.shape}')
+    # logger.info(f'shear_image {sheared.shape}')
     return sheared
 
 
@@ -192,7 +192,7 @@ def scale_image(image: np.ndarray, sx: int = 0.5, sy: int = 0.5) -> np.ndarray:
     h, w = image.shape[:2]
     matrix = np.float32([[sx, 0, 0], [0, sy, 0]])
     scaled = cv2.warpAffine(image, matrix, (w, h), borderValue=(255, 255, 255))
-    logger.info(f'scale_image {scaled.shape}')
+    # logger.info(f'scale_image {scaled.shape}')
     return scaled
 
 
@@ -214,7 +214,7 @@ def crop_image(image: np.ndarray, ratio: float = 0.2) -> np.ndarray:
     left = int(w * ratio)
     right = int(w * (1 - ratio))
     cropped = image[top:bottom, left:right]
-    logger.info(f'crop_image {cropped.shape}')
+    # logger.info(f'crop_image {cropped.shape}')
     return cropped
 
 
@@ -229,7 +229,7 @@ def resize_image(image: np.ndarray, sx: int = 0.5, sy: int = 0.5) -> np.ndarray:
     new_w = int(w * sx)
     new_h = int(h * sy)
     resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
-    logger.info(f'resize_image {resized.shape}')
+    # logger.info(f'resize_image {resized.shape}')
     return resized
 
 def distort_image(image: np.ndarray, k: float = 0.5) -> np.ndarray:
@@ -256,7 +256,7 @@ def distort_image(image: np.ndarray, k: float = 0.5) -> np.ndarray:
     distorted = cv2.remap(
         image, map_x, map_y, interpolation=cv2.INTER_LINEAR, borderValue=(255, 255, 255)
     )
-    logger.info(f'distort_image {distorted.shape}')
+    # logger.info(f'distort_image {distorted.shape}')
     return distorted
 
 
@@ -275,7 +275,7 @@ def blur_image(image: np.ndarray, ksize: int = 5) -> np.ndarray:
     """
     kernel = np.ones((ksize, ksize), np.float32) / (ksize * ksize)
     blurred = cv2.filter2D(image, -1, kernel)
-    logger.info(f'blur_image {blurred.shape}')
+    # logger.info(f'blur_image {blurred.shape}')
     return blurred
 
 
@@ -293,7 +293,7 @@ def contrast_image(image: np.ndarray, alpha: float = 2) -> np.ndarray:
     beta = 0
     contrasted = image.astype(np.float32) * alpha + beta
     contrasted = np.clip(contrasted, 0, 255)
-    logger.info(f'contrast_image {contrasted.shape}')
+    # logger.info(f'contrast_image {contrasted.shape}')
     return contrasted.astype(np.uint8)
 
 
@@ -311,7 +311,7 @@ def lighten_image(image: np.ndarray, beta: int = 70) -> np.ndarray:
     alpha = 1
     lightened = image.astype(np.float32) * alpha + beta
     lightened = np.clip(lightened, 0, 255)
-    logger.info(f'contrast_image {lightened.shape}')
+    # logger.info(f'contrast_image {lightened.shape}')
     return lightened.astype(np.uint8)
 
 
@@ -320,7 +320,7 @@ def augment_image(original_image: np.ndarray) -> dict:
     Takes an image and returns a dict with that image augmented in 6 different
     ways (key: augmentation type, value: augmented image)
     """
-    logger.info("Augmenting image")
+    # logger.info("Augmenting image")
 
     AUGMENTATIONS = {
         "Translate": translate_image,
@@ -346,7 +346,7 @@ def augment_image(original_image: np.ndarray) -> dict:
 
 def display_images(images: dict):
     """Displays all augmented images side by side in one row"""
-    logger.info("Displaying augmented images")
+    # logger.info("Displaying augmented images")
     n = len(images)
     if n == 0:
         return
@@ -377,7 +377,7 @@ def save_images(original_image_path: str, images: dict):
     dir_path = first_split[0]
     base_name = second_split[0]
     ext = second_split[-1]
-    logger.info(f"Saving augmented images to '{dir_path}'")
+    # logger.info(f"Saving augmented images to '{dir_path}'")
 
     os.makedirs(dir_path, exist_ok=True)
 
@@ -390,8 +390,8 @@ def save_images(original_image_path: str, images: dict):
             if not success:
                 logger.error(f"Could not save image '{filename}'")
                 raise IOError(f"cv2.imwrite failed to save '{image_path}'")
-            else:
-                logger.info(f"Saved '{filename}'")
+            # else:
+                # logger.info(f"Saved '{filename}'")
 
 def parse_args() -> argparse.Namespace:
     """Uses `argparse` to handle the arguments : image_path, output_dir"""
@@ -406,7 +406,7 @@ def parse_args() -> argparse.Namespace:
 def main():
     try:
 
-        logger.info("Starting Augmentation.py program")
+        # logger.info("Starting Augmentation.py program")
 
         args = parse_args()
         image_path = args.image_path
