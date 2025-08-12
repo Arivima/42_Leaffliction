@@ -48,12 +48,59 @@ classification - 4 classes
 - monitor experiment w/ wandb
 """
 
+import torch
+from torch import nn
 import argparse
 import sys
 from scripts.utils.logger import get_logger
 from scripts.utils.load_data import LeaflictionData
+from scripts.utils.model import LeaflictionCNN
 
 logger = get_logger(__name__)
+
+# def fit(dataloader, model, loss_fn, optimizer, device):
+#     size = len(dataloader.dataset)
+#     model.train()
+#     for batch, (X, y) in enumerate(dataloader):
+#         X, y = X.to(device), y.to(device)
+
+#         # Compute prediction error
+#         pred = model(X)
+#         loss = loss_fn(pred, y)
+
+#         # Backpropagation
+#         loss.backward()
+#         optimizer.step()
+#         optimizer.zero_grad()
+
+#         if batch % 100 == 0:
+#             loss, current = loss.item(), (batch + 1) * len(X)
+#             print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+
+# def eval(dataloader, model, loss_fn, device):
+#     size = len(dataloader.dataset)
+#     num_batches = len(dataloader)
+#     model.eval()
+#     test_loss, correct = 0, 0
+#     with torch.no_grad():
+#         for X, y in dataloader:
+#             X, y = X.to(device), y.to(device)
+#             pred = model(X)
+#             test_loss += loss_fn(pred, y).item()
+#             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
+#     test_loss /= num_batches
+#     correct /= size
+#     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
+
+# def predict(model, data, device, classes):
+#     model.eval()
+#     x, y = data[0][0], data[0][1]
+#     with torch.no_grad():
+#         x = x.to(device)
+#         pred = model(x)
+#         predicted, actual = classes[pred[0].argmax(0)], classes[y]
+#         print(f'Predicted: "{predicted}", Actual: "{actual}"')
+
 
 
 def parse_args() -> argparse.Namespace:
@@ -69,6 +116,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--force-preproc",
         action="store_true",
+        default=False,
         help="Re-execute preproc even if augmented dataset already exists",
     )
 
@@ -87,19 +135,48 @@ def main():
         logger.info("Starting train.py program")
 
         args = parse_args()
+        print(args)
+
+        batch_size = 32
         data = LeaflictionData(
             original_dir=args.data_dir,
-            force_preproc = False,
-            test_split = 0.2,
-            val_split = 0.2,
-            batch_size = 32,
-            allowed_dir = "images",
-            )
+            force_preproc=args.force_preproc,
+            test_split=0.2,
+            val_split=0.2,
+            batch_size=batch_size,
+            allowed_dir="images",
+        )
 
-        # - model + compile + fit
-        # - train
-        # - eval
-        # - monitor experiment w/ wandb
+        device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+        print(f"Using {device} device")
+
+        model = LeaflictionCNN(num_classes=4, device=device).to(device)
+        print(model)
+
+
+        loss_fn = nn.CrossEntropyLoss()
+        learning_rate = 1e-3
+        optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+        model.compile(loss=loss_fn, optimizer=optimizer, lr=learning_rate)
+
+        epochs = 1
+        for t in range(epochs):
+            print(f"Epoch {t+1}\n-------------------------------")
+            model.fit(data.loaders['train'])
+            model.eval(data.loaders['train'])
+            model.eval(data.loaders['val'])
+        print("Done!")
+
+        model.eval(data.loaders['test'])
+
+        # todo
+        # - training
+        #   - loss train, loss val, acc train, acc val
+        #   - laerning curves
+        #   - experiment tracking wandb
+        #   - hyperparam optimization
+        #   - documentation
+        #   - add fit, eval, predict to model class
         # - save zip model and augmented data
 
         return

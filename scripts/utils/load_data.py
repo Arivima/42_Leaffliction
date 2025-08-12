@@ -8,6 +8,7 @@ import random
 import shutil
 from collections import Counter, defaultdict
 from pathlib import Path
+import json
 
 import pandas as pd
 import torch
@@ -37,7 +38,10 @@ class LeaflictionData:
 
     - If data has already been processed once, set force_preproc to True to force processing
     - If force processing is activated, existing processed data will be deleted, user confirmation is required
-    - Dataset type : torchvision.datasets.ImageFolder
+    - PyTorch has two primitives to work with data: torch.utils.data.DataLoader and torch.utils.data.Dataset. 
+        Dataset stores the samples and their corresponding labels, and DataLoader wraps an iterable around the Dataset.
+        DataLoader supports automatic batching, sampling, shuffling and multiprocess data loading
+        We are using Dataset type : torchvision.datasets.ImageFolder
         https://docs.pytorch.org/docs/stable/data.html
 
     Class arguments:
@@ -96,10 +100,12 @@ class LeaflictionData:
 
         self._init_paths()
 
-        if self.force_preproc and self.augmented_dir.exists():
+        do_clean = self.force_preproc and self.augmented_dir.exists()
+        if do_clean:
             self._clean_directories()
 
-        if not self._is_preproc_ready():
+        do_preproc = not self._is_preproc_ready()
+        if do_preproc:
             logger.info("No existing data. Going through preprocessing")
             self._preprocess()
         else:
@@ -107,10 +113,13 @@ class LeaflictionData:
             self._load()
 
         self._create_data_loaders()
+        logger.info(f"Data loaders available : {self.loaders.keys()}")
 
-        logger.info("Running descriptive analysis")
-        logger.debug(self)
-        self._run_data_analysis()
+        if do_preproc:
+            logger.info("Running descriptive analysis on processed data")
+            self._run_data_analysis()
+    
+
 
     def _init_attributes(self):
         """initializes all attributes - full list of class attributes"""
@@ -230,31 +239,45 @@ class LeaflictionData:
         self.datasets["train"] = self._load_image_folder(self.data_dirs["train"])
         self._set_class_count()
 
+
+    def _format_metadata(self):
+        """Creates a json with metadata for debugging purposes"""
+        def _s(x):
+            return str(x) if x is not None else None
+
+        payload = {
+            "LeaflictionData": {
+                "paths": {
+                    "original_dir": _s(self.original_dir),
+                    "augmented_dir": _s(self.augmented_dir),
+                    "data_dirs": {k: _s(v) for k, v in self.data_dirs.items()},
+                    "data_dir_train_raw": _s(self.data_dir_train_raw),
+                },
+                "flags": {
+                    "force_preproc": bool(self.force_preproc),
+                    "test_split": float(self.test_split) if self.test_split is not None else None,
+                    "val_split": float(self.val_split) if self.val_split is not None else None,
+                    "batch_size": int(self.batch_size) if self.batch_size is not None else None,
+                    "allowed_dir": _s(self.allowed_dir),
+                },
+                "loaded": {
+                    "data_processed": self._is_preproc_ready(),
+                    "original_ds": self.original_ds is not None,
+                    "datasets": {k: (k in self.datasets) for k in ("train", "val", "test")},
+                    "loaders": {k: (k in self.loaders) for k in ("train", "val", "test")},
+                },
+                "classes": {
+                    "num_classes": len(self.idx_to_class) if self.idx_to_class else 0,
+                    "idx_to_class": self.idx_to_class,
+                },
+            }
+        }
+        return payload
+        
     def __repr__(self):
         """overrides default implementation for debugging purposes"""
-        class_to_idx = pd.DataFrame.from_dict(
-            self.class_to_idx, orient="index", columns=["idx"]
-        )
-
-        return (
-            f"LeaflictionData:\n"
-            f"  original_dir\t\t={self.original_dir}\n"
-            f"  augmented_dir\t\t={self.augmented_dir}\n"
-            f"  data_dirs['train']\t={self.data_dirs['train']}\n"
-            f"  data_dirs['val']\t={self.data_dirs['val']}\n"
-            f"  data_dirs['test']\t={self.data_dirs['test']}\n"
-            f"  original_ds\t\t={self.original_ds is not None}\n"
-            f"  datasets['train']\t={'train' in self.datasets.keys()}\n"
-            f"  datasets['val']\t={'val' in self.datasets.keys()}\n"
-            f"  datasets['test']\t={'test' in self.datasets.keys()}\n"
-            f"  force_preproc\t\t={self.force_preproc}\n"
-            f"  test_split\t\t={self.test_split}\n"
-            f"  val_split\t\t={self.val_split}\n"
-            f"  batch_size\t\t={self.batch_size}\n"
-            f"  allowed_dir\t\t={self.allowed_dir}\n"
-            f"  class_to_idx\n"
-            f"{class_to_idx}\n\n"
-        )
+        payload = self._format_metadata()
+        return json.dumps(payload, indent=4, sort_keys=False, ensure_ascii=False)
 
     def _is_safe_path(self, safe_dir: str, path: str) -> bool:
         """Return True is user given path is within allowed directory"""
@@ -479,18 +502,17 @@ class LeaflictionData:
         train_sampler = WeightedRandomSampler(train_weights, len(train_weights))
 
         # DataLoader : dataset iterable loader/collator for in-training batch processing
-        self.loaders["train_loader"] = DataLoader(
+        self.loaders["train"] = DataLoader(
             self.datasets["train"],
             batch_size=self.batch_size,
             sampler=train_sampler,
         )
-        self.loaders["test_loader"] = DataLoader(
+        self.loaders["test"] = DataLoader(
             self.datasets["test"], batch_size=self.batch_size, shuffle=False
         )
-        self.loaders["val_loader"] = DataLoader(
+        self.loaders["val"] = DataLoader(
             self.datasets["val"], batch_size=self.batch_size, shuffle=False
         )
-        logger.info(f"Data loaders available : {self.loaders.keys()}")
 
     def _run_data_analysis(self):
         """
@@ -499,6 +521,7 @@ class LeaflictionData:
         """
 
         def get_data():
+            """Return class counts for each dataset split."""
             data = {
                 dataset: self.class_count_name.get(dataset, {})
                 for dataset in self.class_count_name.keys()
@@ -506,18 +529,29 @@ class LeaflictionData:
             return data
 
         def get_df(data):
+            """Return a DataFrame with class counts and totals."""
             df = pd.DataFrame(data).fillna(0).astype(int)
             df["total"] = df[["train", "val", "test"]].sum(axis=1)
             df.loc["total"] = df.sum(axis=0)
+            df.index.name = 'classes'
             return df
 
-        def display_df(df):
-            formatters = {col: "{:,}".format for col in df.columns}
-            print(df.to_string(formatters=formatters))
-
+        def export_df(df, path : str | Path):
+            """Export a DataFrame to a Markdown table file."""
+            df_formatted = df.map(lambda x: f"{x:,}" if isinstance(x, (int, float)) else x)
+            md_str = df_formatted.to_markdown(index=True)
+            path.write_text(md_str)
+            
+        def export_metadata(self, path : str | Path):
+            """Export metadata to a JSON file"""
+            payload = json.loads(self.__repr__())
+            with open(path, 'w', encoding='utf-8',) as f:
+                json.dump(payload, f, ensure_ascii=False, indent=4)
+            
         def get_count_df(
             class_count_name: dict[str, dict[str, int]], col_name: str
         ) -> pd.DataFrame:
+            """Return a DataFrame with counts for a single dataset split."""
             df = pd.DataFrame.from_dict(class_count_name, orient="columns")
             if col_name not in df.columns:
                 raise ValueError(f"'{col_name}' not found in class_count_name")
@@ -525,15 +559,23 @@ class LeaflictionData:
             df_split.rename(columns={col_name: "count"}, inplace=True)
             return df_split
 
+    
+        metadata_path = Path("plots/_metadata.json")
+        export_metadata(self, path=metadata_path)
+        logger.info(f"Exported preproc metadata at : {metadata_path}")
+
         data = get_data()
         df = get_df(data)
-        display_df(df)
+        df_path=Path("plots/_description.md")
+        export_df(df, path=df_path)
+        logger.info(f"Exported data descripion at : {df_path}")
 
         distributions = []
         for dataset in data.keys():
             df = get_count_df(self.class_count_name, dataset)
             distributions.append((df, dataset))
 
+        logger.info("Exporting plots ...")
         title = self.original_dir.resolve().name
         plot_multiple_distributions(plot_title=title, distributions=distributions)
 
@@ -552,6 +594,11 @@ if __name__ == "__main__":
             batch_size=32,
             allowed_dir="images",
         )
+
+        for X, y in data.loaders['train']:
+            print(f"Shape of X [N, C, H, W]: {X.shape}")
+            print(f"Shape of y: {y.shape} {y.dtype}")
+            break
 
     except FileNotFoundError as e:
         logger.error(f"File error: {e}")
