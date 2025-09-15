@@ -27,11 +27,80 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 from plotly.subplots import make_subplots
-from utils.logger import get_logger
+from scripts.utils.logger import get_logger
 
 PLOT_OUTPUT_DIR = "plots"
 
 logger = get_logger(__name__)
+
+def plot_multiple_distributions(plot_title:str, distributions: list[tuple[pd.DataFrame, str]]) -> None:
+    """
+    Generates and displays multiple combined pie+bar charts, one per dataset.
+    Up to 5 datasets. Displays inline (does not save images).
+
+    Args:
+        distributions: List of (DataFrame, title) tuples.
+                       Each DataFrame must have 'category' and 'count' columns.
+    """
+    if not distributions:
+        raise ValueError("No distributions provided.")
+    if len(distributions) > 5:
+        raise ValueError("Too many datasets to plot. Max allowed: 5.")
+
+    n = len(distributions)
+    fig = make_subplots(
+        rows=n,
+        cols=2,
+        subplot_titles=[
+            f"{title} - Pie Chart" if i % 2 == 0 else f"{title} - Bar Chart"
+            for df, title in distributions
+            for i in range(2)
+        ],
+        specs=[[{"type": "domain"}, {"type": "xy"}] for _ in range(n)],
+        vertical_spacing=0.15,
+    )
+
+    for row_idx, (df, title) in enumerate(distributions, start=1):
+        if df.empty or not {"category", "count"}.issubset(df.columns):
+            raise ValueError(f"Invalid DataFrame for dataset '{title}'")
+
+        categories = df["category"].tolist()
+        color_map = {
+            cat: DEFAULT_PLOTLY_COLORS[i % len(DEFAULT_PLOTLY_COLORS)]
+            for i, cat in enumerate(categories)
+        }
+
+        fig.add_trace(
+            go.Pie(
+                labels=df["category"],
+                values=df["count"],
+                marker=dict(colors=[color_map[cat] for cat in df["category"]]),
+            ),
+            row=row_idx,
+            col=1,
+        )
+
+        fig.add_trace(
+            go.Bar(
+                x=df["category"],
+                y=df["count"],
+                marker_color=[color_map[cat] for cat in df["category"]],
+            ),
+            row=row_idx,
+            col=2,
+        )
+
+    fig.update_layout(
+        height=500 * n,
+        width=1400,
+        title_text="Dataset Distributions",
+        showlegend=False,
+    )
+
+    output_path = os.path.join(PLOT_OUTPUT_DIR, f"{plot_title}_multiple_chart.png")
+    fig.write_image(output_path, width=1000, height=1500)
+
+    logger.info(f"Distribution chart saved to: {output_path}")
 
 
 def plot_distribution_combined(df: pd.DataFrame, title: str) -> None:
