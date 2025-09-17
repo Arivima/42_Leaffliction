@@ -39,7 +39,7 @@ import sys
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
-from utils.logger import get_logger
+from scripts.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

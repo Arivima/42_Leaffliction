@@ -12,8 +12,19 @@ dependencies = [
     "pandas>=2.3.1",
     "plotly>=6.2.0",
     "ruff>=0.12.7",
+    "scikit-learn>=1.7.2",
     "tabulate>=0.9.0",
     "torch>=2.7.1",
     "torchvision>=0.22.1",
     "tqdm>=4.67.1",
 ]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.30.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["scripts*"]
+exclude = ["images*", "images_augmented*", "plots*", "samples*", "notebooks*"]

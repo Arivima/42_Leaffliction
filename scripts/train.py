@@ -1,9 +1,24 @@
 """
-In this part, you must write a program named train.[extension] that takes as parameter
-a directory and fetches images in its subdirectories. It must then increase/modify those
-images in order to learn the characteristics of the diseases specified in the leaf. Those
-learnings must be saved and returned in a .zip that also includes your increased/modified
-images.
+train.py
+
+# Subject
+4 class image classification with data augmentation
+## Params:
+- directory containing dataset
+
+## What it does:
+- fetches images in its subdirectories. 
+- increase/modify those images
+- separate dataset in training and testing sets
+- learn the characteristics of the diseases specified in the leaf. 
+- save learnings and increased/modified dataset in a .zip
+
+## Constraints:
+- Test accuracy must be above 90%
+- Test set should have min 100 imgs
+- Demonstrated no data leakage or overfitting
+
+## How to use:
 $> ./train.[extension] ./Apple/
 $> find . -maxdepth 2
 ./Apple
@@ -12,27 +27,20 @@ $> find . -maxdepth 2
 ./Apple/apple_black_rot
 ./Apple/apple_cedar_apple_rust
 
-You have to separate your data set in two parts, one for Training and one for Validation.
-The predictions of your validation set must also have an accuracy above 90% (you
-must be able to prove it in an evaluation, with a minimum of 100 images in the validation
-set).
-Make sure you don't have any knowledge about the validation set or on overfitting
-prior to the assessment, so your results don't look suspicious.
-
-classification - 4 classes
-        category	    count	train	test	val	    sum
+## Distribution:
+cls category	    count	train	test	val	    SUM
 0	Grape_Esca	    1382	884	    221	    276	    1381
 1	Grape_Black_rot	1178	753	    188	    235	    1176
 2	Grape_spot	    1075	688	    172	    215	    1075
 3	Grape_healthy   422	    270	    67	    84	    421
-    sum             4057	2595	648	    810
+    SUM             4057	2595	648	    810
 
-        category	    count	train	test	val	    sum
+cls category	    count	train	test	val	    SUM
 0	Apple_healthy	1640	1049	262	    328	    1639
 1	Apple_scab	    629	    402	    100	    125	    627
 2	Apple_Black_rot	620	    396	    99	    124	    619
 3	Apple_rust	    275	    176	    44	    55	    275
-    sum             3164	2023	505	    632
+    SUM             3164	2023	505	    632
 
 - load data
     - from subdirectories
@@ -53,7 +61,7 @@ from torch import nn
 import argparse
 import sys
 from scripts.utils.logger import get_logger
-from scripts.utils.load_data import LeaflictionData
+from scripts.utils.data import LeaflictionData
 from scripts.utils.model import LeaflictionCNN
 
 logger = get_logger(__name__)
