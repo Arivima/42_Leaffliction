@@ -5,6 +5,8 @@ images/
 images_augmented/
 plots/
 samples/
+experiments/
+*.zip
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
