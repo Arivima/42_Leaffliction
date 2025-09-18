@@ -1,5 +1,5 @@
 """
-load_data.py
+data.py
 - LeaflictionData class
 """
 
@@ -8,6 +8,7 @@ import random
 import shutil
 from collections import Counter, defaultdict
 from pathlib import Path
+import json
 
 import pandas as pd
 import torch
@@ -18,8 +19,8 @@ from tqdm import tqdm
 
 from scripts.utils.logger import get_logger
 
-from ..Augmentation import augment_image, display_images, open_image, save_images
-from ..Distribution import plot_multiple_distributions
+from scripts.Augmentation import augment_image, display_images, open_image, save_images
+from scripts.Distribution import plot_multiple_distributions
 
 logger = get_logger(__name__)
 
@@ -27,7 +28,7 @@ logger = get_logger(__name__)
 class LeaflictionData:
     """
     A class to handle data loading and pre-processing
-    - Creates a back up for the original directory
+    - Creates a copy of the original directory
     - Splits dataset into subsets for train-val-test (save in-place)
     - Apply data augmentation (save in-place) (see samples/)
     - Apply preprocessing : size harmonization, normalization, conversion to tensors
@@ -37,16 +38,18 @@ class LeaflictionData:
 
     - If data has already been processed once, set force_preproc to True to force processing
     - If force processing is activated, existing processed data will be deleted, user confirmation is required
-    - Dataset type : torchvision.datasets.ImageFolder
+    - PyTorch has two primitives to work with data: torch.utils.data.DataLoader and torch.utils.data.Dataset. 
+        Dataset stores the samples and their corresponding labels, and DataLoader wraps an iterable around the Dataset.
+        DataLoader supports automatic batching, sampling, shuffling and multiprocess data loading
+        We are using Dataset type : torchvision.datasets.ImageFolder
         https://docs.pytorch.org/docs/stable/data.html
 
     Class arguments:
-    - original_dir: str             (Mandatory) : original image dataset    # ex : ./images/Apple
+    - original_dir: str | Path      (Mandatory) : original image dataset    # ex : ./images/Apple
     - force_preproc: bool = False   (Optional)  : ensures pre-processing execution even if data is ready
     - test_split: int = 0.2         (Optional)  : ratio of test set vs train set
     - val_split: int = 0.2          (Optional)  : ratio of validation set vs train set (train - test)
     - batch_size: int = 32          (Optional)  : how many images per training batch
-    - allowed_dir: str = "images"   (Optional)  : where to process images   # ex : ./images
 
     Attributes:
     - augmented_dir: Path                       : path of processed image dataset
@@ -70,56 +73,68 @@ class LeaflictionData:
     - samples               # ex : ./samples                            (sample of augmented images)
     - plots                 # ex : ./plots                              (datasets descriptive plots)
 
-    P
+    Raises:
+    - ValueError if original_dir is invalid
     """
 
     def __init__(
         self,
-        original_dir: str,
+        original_dir: str | Path,
         force_preproc: bool = False,
         test_split: int = 0.2,
         val_split: int = 0.2,
         batch_size: int = 32,
-        allowed_dir: str = "images",
     ):
         """Gets datasets ready for training"""
         logger.info("Initializing LeaflictionData")
 
+        # initialize attributes and paths
         self._init_attributes()
 
-        self.original_dir: Path = Path(original_dir).resolve()
+        try:
+            p = Path(original_dir).expanduser()
+            self.original_dir: Path = p if p.is_absolute() else p.resolve(strict=True)
+        except Exception as e:
+            raise ValueError("Invalid attribute 'original_dir'", e)
+        
         self.force_preproc: bool = force_preproc
         self.test_split: int = test_split
         self.val_split: int = val_split
         self.batch_size: int = batch_size
-        self.allowed_dir: str = allowed_dir
 
         self._init_paths()
 
-        if self.force_preproc and self.augmented_dir.exists():
+        # if necessary, reset 'augmented_directory'
+        do_clean = self.force_preproc and self.augmented_dir.exists()
+        if do_clean:
             self._clean_directories()
 
-        if not self._is_preproc_ready():
+        # preprocess & load data
+        do_preproc = not self._is_preproc_ready()
+        if do_preproc:
             logger.info("No existing data. Going through preprocessing")
             self._preprocess()
         else:
             logger.info("Datasets are ready. Skipping preprocessing")
             self._load()
 
+        # set-up data-loaders for training
         self._create_data_loaders()
+        logger.info(f"Data loaders available : {self.loaders.keys()}")
 
-        logger.info("Running descriptive analysis")
-        logger.debug(self)
-        self._run_data_analysis()
+        # provides a descriptive dataset analysis
+        if do_preproc:
+            logger.info("Running descriptive analysis on processed data")
+            self._run_data_analysis()
+
 
     def _init_attributes(self):
         """initializes all attributes - full list of class attributes"""
-        self.original_dir: Path = None
+        self.original_dir: str | Path = None
         self.force_preproc: bool = None
         self.test_split: int = None
         self.val_split: int = None
         self.batch_size: int = None
-        self.allowed_dir: str = None
 
         self.augmented_dir: Path = None
         self.data_dir_train_raw: Path = None
@@ -133,6 +148,7 @@ class LeaflictionData:
         self.class_count_idx: dict[int, int] = {}
         self.class_count_name: dict[str, int] = {}
 
+
     def _init_paths(self):
         """
         Initializes paths. Uses self.original_dir to set:
@@ -140,10 +156,13 @@ class LeaflictionData:
         - self.data_dirs
         """
         # Set augmented directory
-        current = self.original_dir.resolve()
-        parent = current.parent
-        grandparent = parent.parent
-        new_parent_name = f"{parent.name}_augmented"
+        current = self.original_dir                     # ex '42_Leaffliction/images/Apple"
+        parent = current.parent                         # '42_Leaffliction/images'
+        grandparent = parent.parent                     # '42_Leaffliction'
+        new_parent_name = f"{parent.name}_augmented"    # '42_Leaffliction/images_augmented'
+
+        if parent.name != 'images' or grandparent.name != '42_Leaffliction':
+            raise ValueError(f"Invalid attribute 'original_dir' : {current}. Dataset should be located in the 'images/' directory.")
 
         self.augmented_dir = Path(grandparent / new_parent_name / current.name)
 
@@ -157,6 +176,7 @@ class LeaflictionData:
 
         # Set train raw directory
         self.data_dir_train_raw = Path(base_dir / f"{base_name}_train_raw")
+
 
     def _clean_directories(self):
         """removes existing directories at the provided path"""
@@ -196,6 +216,7 @@ class LeaflictionData:
         self.datasets["test"] = self._load_image_folder(self.data_dirs["test"])
         self._set_class_count()
 
+
     def _preprocess(self):
         """
         - Executes preprocessing:
@@ -230,37 +251,73 @@ class LeaflictionData:
         self.datasets["train"] = self._load_image_folder(self.data_dirs["train"])
         self._set_class_count()
 
+
+    def _format_metadata(self):
+        """Creates a json with metadata for debugging purposes"""
+        def _s(x):
+            return str(x) if x is not None else None
+
+        payload = {
+            "LeaflictionData": {
+                "paths": {
+                    "original_dir": _s(self.original_dir),
+                    "augmented_dir": _s(self.augmented_dir),
+                    "data_dirs": {k: _s(v) for k, v in self.data_dirs.items()},
+                    "data_dir_train_raw": _s(self.data_dir_train_raw),
+                },
+                "flags": {
+                    "force_preproc": bool(self.force_preproc),
+                    "test_split": float(self.test_split) if self.test_split is not None else None,
+                    "val_split": float(self.val_split) if self.val_split is not None else None,
+                    "batch_size": int(self.batch_size) if self.batch_size is not None else None,
+                },
+                "loaded": {
+                    "data_processed": self._is_preproc_ready(),
+                    "original_ds": self.original_ds is not None,
+                    "datasets": {k: (k in self.datasets) for k in ("train", "val", "test")},
+                    "loaders": {k: (k in self.loaders) for k in ("train", "val", "test")},
+                },
+                "classes": {
+                    "num_classes": len(self.idx_to_class) if self.idx_to_class else 0,
+                    "idx_to_class": self.idx_to_class,
+                },
+            }
+        }
+        return payload
+        
     def __repr__(self):
         """overrides default implementation for debugging purposes"""
-        class_to_idx = pd.DataFrame.from_dict(
-            self.class_to_idx, orient="index", columns=["idx"]
-        )
+        payload = self._format_metadata()
+        return json.dumps(payload, indent=4, sort_keys=False, ensure_ascii=False)
 
-        return (
-            f"LeaflictionData:\n"
-            f"  original_dir\t\t={self.original_dir}\n"
-            f"  augmented_dir\t\t={self.augmented_dir}\n"
-            f"  data_dirs['train']\t={self.data_dirs['train']}\n"
-            f"  data_dirs['val']\t={self.data_dirs['val']}\n"
-            f"  data_dirs['test']\t={self.data_dirs['test']}\n"
-            f"  original_ds\t\t={self.original_ds is not None}\n"
-            f"  datasets['train']\t={'train' in self.datasets.keys()}\n"
-            f"  datasets['val']\t={'val' in self.datasets.keys()}\n"
-            f"  datasets['test']\t={'test' in self.datasets.keys()}\n"
-            f"  force_preproc\t\t={self.force_preproc}\n"
-            f"  test_split\t\t={self.test_split}\n"
-            f"  val_split\t\t={self.val_split}\n"
-            f"  batch_size\t\t={self.batch_size}\n"
-            f"  allowed_dir\t\t={self.allowed_dir}\n"
-            f"  class_to_idx\n"
-            f"{class_to_idx}\n\n"
-        )
 
-    def _is_safe_path(self, safe_dir: str, path: str) -> bool:
-        """Return True is user given path is within allowed directory"""
-        allowed_base = os.path.abspath(safe_dir)
-        absolute_path = os.path.abspath(path)
-        return absolute_path.startswith(allowed_base)
+    # def _is_safe_path(self, path: str) -> bool:
+    #     """
+    #     Ensure `path` is inside `<.../42_Leaffliction/images/>`.
+    #     Return True is user given path is within allowed directory
+    #     """
+
+    #     project="42_Leaffliction"
+    #     subdir="images"
+    #     p = Path(path).resolve()
+
+    #     # Find the nearest ancestor named `project`
+    #     for a in (p, *p.parents):
+    #         if a.name == project:
+    #             safe_root = a / subdir
+    #             if p.is_relative_to(safe_root):
+    #                 return True
+    #     return False
+
+
+    @staticmethod
+    def find_project_root(p: Path, name="42_Leaffliction") -> Path:
+        p = p.resolve()
+        for a in (p, *p.parents):
+            if a.name == name:
+                return a
+        raise ValueError(f"Not inside '{name}': {p}")
+
 
     def _is_preproc_ready(self) -> bool:
         """returns True if all directories are created and exist"""
@@ -342,10 +399,10 @@ class LeaflictionData:
         Returns
             (ImageFolder) : Loaded dataset
         """
-        if not self._is_safe_path(self.allowed_dir, data_dir):
-            raise ValueError(
-                f"'{data_dir}' is outside allowed directory. Allowed directory : 'images*/'"
-            )
+        # if not self._is_safe_path(data_dir):
+        #     raise ValueError(
+        #         f"'{data_dir}' is outside allowed directory. Allowed directory : 'images*/'"
+        #     )
 
         if not os.path.isdir(data_dir):
             raise NotADirectoryError(f"'{data_dir}' is not a valid directory.")
@@ -443,12 +500,13 @@ class LeaflictionData:
         for image_path in tqdm(
             image_paths, desc="Augmenting training data", unit="image"
         ):
+            # augment image - save in-place
             image = open_image(image_path=image_path)
             augmented_images = augment_image(original_image=image)
             save_images(original_image_path=image_path, images=augmented_images)
 
+            # export a sample side-by-side for the first 10 images
             file = Path(image_path)
-
             parts = [
                 part
                 for name in [file.parent.parent.name, file.parent.name, file.name]
@@ -465,7 +523,7 @@ class LeaflictionData:
     def _create_data_loaders(self):
         """
         - Sets data loaders for train, test, val sets
-        - Uses WeightedRandomSampler for the training set based on target class distribution
+        - Uses a sampler (WeightedRandomSampler) for the training set based on target class distribution
         """
         # sampler : used during training to apply a specific sampling strategy
         # WeightedRandomSampler handles class imbalance
@@ -479,18 +537,17 @@ class LeaflictionData:
         train_sampler = WeightedRandomSampler(train_weights, len(train_weights))
 
         # DataLoader : dataset iterable loader/collator for in-training batch processing
-        self.loaders["train_loader"] = DataLoader(
+        self.loaders["train"] = DataLoader(
             self.datasets["train"],
             batch_size=self.batch_size,
             sampler=train_sampler,
         )
-        self.loaders["test_loader"] = DataLoader(
+        self.loaders["test"] = DataLoader(
             self.datasets["test"], batch_size=self.batch_size, shuffle=False
         )
-        self.loaders["val_loader"] = DataLoader(
+        self.loaders["val"] = DataLoader(
             self.datasets["val"], batch_size=self.batch_size, shuffle=False
         )
-        logger.info(f"Data loaders available : {self.loaders.keys()}")
 
     def _run_data_analysis(self):
         """
@@ -499,6 +556,7 @@ class LeaflictionData:
         """
 
         def get_data():
+            """Return class counts for each dataset split."""
             data = {
                 dataset: self.class_count_name.get(dataset, {})
                 for dataset in self.class_count_name.keys()
@@ -506,18 +564,29 @@ class LeaflictionData:
             return data
 
         def get_df(data):
+            """Return a DataFrame with class counts and totals."""
             df = pd.DataFrame(data).fillna(0).astype(int)
             df["total"] = df[["train", "val", "test"]].sum(axis=1)
             df.loc["total"] = df.sum(axis=0)
+            df.index.name = 'classes'
             return df
 
-        def display_df(df):
-            formatters = {col: "{:,}".format for col in df.columns}
-            print(df.to_string(formatters=formatters))
-
+        def export_df(df, path : str | Path):
+            """Export a DataFrame to a Markdown table file."""
+            df_formatted = df.map(lambda x: f"{x:,}" if isinstance(x, (int, float)) else x)
+            md_str = df_formatted.to_markdown(index=True)
+            path.write_text(md_str)
+            
+        def export_metadata(self, path : str | Path):
+            """Export metadata to a JSON file"""
+            payload = json.loads(self.__repr__())
+            with open(path, 'w', encoding='utf-8',) as f:
+                json.dump(payload, f, ensure_ascii=False, indent=4)
+            
         def get_count_df(
             class_count_name: dict[str, dict[str, int]], col_name: str
         ) -> pd.DataFrame:
+            """Return a DataFrame with counts for a single dataset split."""
             df = pd.DataFrame.from_dict(class_count_name, orient="columns")
             if col_name not in df.columns:
                 raise ValueError(f"'{col_name}' not found in class_count_name")
@@ -525,15 +594,27 @@ class LeaflictionData:
             df_split.rename(columns={col_name: "count"}, inplace=True)
             return df_split
 
+
+        # export object metadata as a json
+        metadata_path = Path("plots/_metadata.json")
+        metadata_path.parent.mkdir(parents=True, exist_ok=True)
+        export_metadata(self, path=metadata_path)
+        logger.info(f"Exported preproc metadata at : {metadata_path}")
+
+        # export dataset distribution
         data = get_data()
         df = get_df(data)
-        display_df(df)
+        df_path=Path("plots/_distribution.md")
+        export_df(df, path=df_path)
+        logger.info(f"Exported data distribution at : {df_path}")
 
+        # export distribution plots
         distributions = []
         for dataset in data.keys():
             df = get_count_df(self.class_count_name, dataset)
             distributions.append((df, dataset))
 
+        logger.info("Exporting plots ...")
         title = self.original_dir.resolve().name
         plot_multiple_distributions(plot_title=title, distributions=distributions)
 
@@ -550,8 +631,12 @@ if __name__ == "__main__":
             test_split=0.2,
             val_split=0.2,
             batch_size=32,
-            allowed_dir="images",
         )
+
+        for X, y in data.loaders['train']:
+            print(f"Shape of X [N, C, H, W]: {X.shape}")
+            print(f"Shape of y: {y.shape} {y.dtype}")
+            break
 
     except FileNotFoundError as e:
         logger.error(f"File error: {e}")

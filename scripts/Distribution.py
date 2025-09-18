@@ -150,13 +150,6 @@ def plot_distribution_combined(df: pd.DataFrame, title: str) -> None:
             col=2,
         )
 
-    # fig.add_trace(
-    #     go.Bar(
-    #         name="Bar",
-    #         x=df["category"], y=df["count"]),
-    #     row=1, col=2
-    # )
-
     fig.update_layout(
         title_text=f"Dataset '{title}' Distribution",
         showlegend=False,
@@ -177,46 +170,6 @@ def plot_distribution_combined(df: pd.DataFrame, title: str) -> None:
     fig.write_image(output_path, width=1000, height=500)
 
     logger.info(f"Combined distribution chart saved to: {output_path}")
-
-
-# def plot_distribution(df: pd.DataFrame, title: str) -> None:
-#     """
-#     Generates pie and bar charts from a DataFrame, saves them as images
-#     """
-#     if df.empty or not {"category", "count"}.issubset(df.columns):
-#         raise ValueError("Invalid DataFrame.")
-
-#     os.makedirs(PLOT_OUTPUT_DIR, exist_ok=True)
-
-#     fig_pie = px.pie(
-#         df,
-#         names="category",
-#         values="count",
-#         title=f"Dataset '{title}' Distribution - Pie Chart",
-#     )
-
-#     fig_bar = px.bar(
-#         df,
-#         x="category",
-#         y="count",
-#         color="category",
-#         title=f"Dataset '{title}' Distribution - Bar Chart",
-#         labels={"category": "Category", "count": "Number of Images"},
-#     )
-#     fig_bar.update_layout(
-#         showlegend=False,
-#         xaxis_tickangle=-45,
-#         yaxis=dict(tickmode="linear", tick0=0, dtick=200),
-#     )
-
-#     output_dir = "plots"
-#     os.makedirs(output_dir, exist_ok=True)
-#     pie_path = os.path.join(output_dir, f"{title}_pie_chart.png")
-#     bar_path = os.path.join(output_dir, f"{title}_bar_chart.png")
-#     fig_pie.write_image(pie_path)
-#     fig_bar.write_image(bar_path)
-
-#     logger.info(f"Distribution charts saved to: {pie_path}, {bar_path}")
 
 
 def load_image_counts(directory_path) -> pd.DataFrame:
