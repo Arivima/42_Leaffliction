@@ -213,9 +213,9 @@ class LeaflictionData:
             for subdir in self.augmented_dir.parent.iterdir()
             if subdir.is_dir() and subdir.name.startswith(self.augmented_dir.name)
         ]
-        print("Deleting directories:")
+        logger.info("Deleting directories:")
         for subdir in subdirs:
-            print(f"{subdir}")
+            logger.info(f"{subdir}")
         answer = input("Yes / No ? ")
         if answer.lower() in ["yes", "y"]:
             for subdir in subdirs:
@@ -753,8 +753,8 @@ if __name__ == "__main__":
         )
 
         for X, y in data.loaders["train"]:
-            print(f"Shape of X [N, C, H, W]: {X.shape}")
-            print(f"Shape of y: {y.shape} {y.dtype}")
+            logger.info(f"Shape of X [N, C, H, W]: {X.shape}")
+            logger.info(f"Shape of y: {y.shape} {y.dtype}")
             break
 
     except FileNotFoundError as e:

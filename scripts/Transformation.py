@@ -227,10 +227,9 @@ def main(
         elif src and dst:
             os.makedirs(dst, exist_ok=True)
             for pathRoot, folders, files in os.walk(src):
-                print(pathRoot)
-                pathRootDst = os.path.join(
-                    dst, re.sub(r"^" + re.escape(src), "", pathRoot)
-                )
+                middle = os.path.relpath(pathRoot, src)
+                pathRootDst = os.path.join(dst, middle)
+
                 if len(folders) > 0:
                     for folder in folders:
                         path = os.path.join(pathRootDst, folder)

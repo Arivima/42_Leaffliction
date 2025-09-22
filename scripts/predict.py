@@ -17,8 +17,8 @@ If given a folder path:
 - exports a classification report and a confusion matrix
 
 Usage:
-$> ./predict.py ./images_augmented/Apple_test/apple_healthy/image (9).JPG
-$> ./predict.py ./images_augmented/Apple_test
+$> uv run scripts/predict.py 'images/Grape_healthy/image (1).JPG'
+$> uv run scripts/predict.py images/Apple
 """
 
 import argparse
@@ -81,7 +81,6 @@ def predict(model, device, image_paths, idx_to_class) -> list[dict]:
             tensor = preprocess_image(img_path).to(device)
             logits = model(tensor)
             pred_idx = logits.argmax(1).item()
-            print(idx_to_class)
             pred_class = idx_to_class[pred_idx]
             results.append({"image": str(img_path), "pred_class": pred_class})
             logger.info(f"{img_path.name:30} -> {pred_class}")
@@ -116,12 +115,12 @@ def main():
         help="Path to an image or a folder containing images for prediction",
     )
     args = parser.parse_args()
-    print(args)
+    logger.info(args)
 
     # initialization
     image_path = Path(args.path).resolve()
     if not image_path.exists():
-        print(f"Image file/folder'{image_path}' not found")
+        logger.error(f"Image file/folder'{image_path}' not found")
         sys.exit(1)
 
     project_root = LeaflictionData.find_project_root(p=image_path)
@@ -129,7 +128,7 @@ def main():
 
     best_model_dir = project_root / "best_model"
     if not best_model_dir.exists():
-        print(f"Best model dir '{best_model_dir}' not found")
+        logger.error(f"Best model dir '{best_model_dir}' not found")
         sys.exit(1)
 
     if "Apple" in str(image_path):
@@ -231,7 +230,7 @@ def main():
             )
 
     else:
-        print(f"Invalid input path: {image_path}")
+        logger.error(f"Invalid input path: {image_path}")
         sys.exit(1)
 
 
