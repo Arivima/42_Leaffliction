@@ -12,7 +12,7 @@ https://www.datacamp.com/tutorial/pytorch-cnn-tutorial
 """
 
 from scripts.utils.logger import get_logger
-
+import torch
 from torch import nn
 
 logger = get_logger(__name__)
@@ -46,7 +46,14 @@ class LeaflictionCNN(nn.Module):
         )
 
     def forward(self, x):
+        """forward pass"""
         x = self.features(x)
         x = self.classifier(x)
         return x
+    
+    def load(self, path:str, device:str) -> torch.nn.Module:
+        """loads the pre-trained model at the specified path"""
+        model = self.load_state_dict(torch.load(path, map_location=device))
+        return model
+
     
