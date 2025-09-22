@@ -268,6 +268,7 @@ class LeaflictionExperiment:
                     )
                     break
 
+    @staticmethod
     def _evaluate_model(self, model, dataloader, split, loss_fn=None) -> dict[str, Any]:
         """
         Model evaluation using dataloader
