@@ -109,8 +109,21 @@ def main():
         print(f"Best model dir '{best_model_dir}' not found")
         sys.exit(1)
 
-    data = LeaflictionData(original_dir=image_path)
-    idx_to_class = data.idx_to_class
+    if str(image_path).find("Apple"):
+        idx_to_class = {
+            '0':"Apple_Black_rot",
+            '1':"Apple_healthy",
+            '2':"Apple_rust",
+            '3':"Apple_scab",
+        }
+    if str(image_path).find("Grape"):
+        idx_to_class = {
+            '0':"Grape_Black_rot",
+            '1':"Grape_Esca",
+            '2':"Grape_healthy",
+            '3':"Grape_spot",
+        }
+
     num_classes = len(idx_to_class)
     logger.info(f"num_classes {num_classes}")
     logger.info(f"idx_to_class {idx_to_class}")
@@ -142,6 +155,7 @@ def main():
     elif image_path.is_dir():
         logger.info(f"Running predict on the test set in the directory {image_path}")
 
+        data = LeaflictionData(original_dir=image_path)
         # predict
         test_results = LeaflictionExperiment._evaluate_model(
             model=model, dataloader=data.loaders["test"], split="test"
