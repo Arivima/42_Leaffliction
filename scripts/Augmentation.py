@@ -35,6 +35,7 @@ Types of augmentation included:
 import argparse
 import os
 import sys
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -371,10 +372,26 @@ def display_images(
 
     plt.tight_layout()
 
-    output_dir = "samples"
     if save:
+        def find_project_root(p: Path, name="42_Leaffliction") -> Path:
+            p = p.resolve()
+            for a in (p, *p.parents):
+                if a.name == name:
+                    return a
+            raise ValueError(f"Not inside '{name}': {p}")
+
+        project_root = find_project_root(Path(os.getcwd()))  # 42_Leafliction
+        if "Apple" in filename:
+            dataset_name = "Apple"
+        elif "Grape" in filename:
+            dataset_name = "Grape"
+
+        output_dir = Path(
+            project_root / "samples" / "augmented" / dataset_name
+        )  # 42_Leafliction/samples/augmented/Apple
+
         os.makedirs(output_dir, exist_ok=True)
-        save_path = os.path.join(output_dir, filename)
+        save_path = output_dir / filename
         plt.savefig(save_path)
         # logger.info(f"Saved figure to: {save_path}")
 
