@@ -109,14 +109,14 @@ def main():
         print(f"Best model dir '{best_model_dir}' not found")
         sys.exit(1)
 
-    if str(image_path).find("Apple"):
+    if "Apple" in str(image_path):
         idx_to_class = {
             '0':"Apple_Black_rot",
             '1':"Apple_healthy",
             '2':"Apple_rust",
             '3':"Apple_scab",
         }
-    if str(image_path).find("Grape"):
+    if "Grape" in str(image_path):
         idx_to_class = {
             '0':"Grape_Black_rot",
             '1':"Grape_Esca",

@@ -1,0 +1,13 @@
+===== TEST =====
+                 precision    recall  f1-score   support
+
+Apple_Black_rot      0.976     0.992     0.984       125
+  Apple_healthy      0.982     0.991     0.986       328
+     Apple_rust      0.932     1.000     0.965        55
+     Apple_scab      0.991     0.920     0.954       125
+
+       accuracy                          0.978       633
+      macro avg      0.970     0.976     0.972       633
+   weighted avg      0.978     0.978     0.978       633
+
+
