@@ -1,17 +1,6 @@
 # 42_Leaffliction
 Computer vision project : Image classification by disease recognition on leaves
 
-## CURRENT STATUS
-- Distribution.py ok
-- Augmentation.py wip
-- Transformation.py to do
-- ./train.py to do
-- ./predict.py to do
-
-## TODO
-- install and set up pre-commit to automate ruff before commit
-- add ruff limit 79 cols
-
 ## Requirements
 - python 3.10.13
 - uv
