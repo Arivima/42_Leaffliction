@@ -26,8 +26,12 @@ import sys
 from pathlib import Path
 
 import pandas as pd
+from plantcv import plantcv as pcv
 import torch
 from PIL import Image
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 from scripts.train import LeaflictionExperiment
 from scripts.utils.data import LeaflictionData
@@ -77,11 +81,30 @@ def predict(model, device, image_paths, idx_to_class) -> list[dict]:
             tensor = preprocess_image(img_path).to(device)
             logits = model(tensor)
             pred_idx = logits.argmax(1).item()
+            print(idx_to_class)
             pred_class = idx_to_class[pred_idx]
             results.append({"image": str(img_path), "pred_class": pred_class})
             logger.info(f"{img_path.name:30} -> {pred_class}")
     return results
 
+def get_mask_transform(img):
+    b = pcv.rgb2gray_lab(rgb_img=img, channel='b')
+    b_thresh = pcv.threshold.otsu(gray_img=b, object_type='light')
+    mask = pcv.fill_holes(bin_img=b_thresh)
+    apply_mask = pcv.apply_mask(img=img, mask=mask, mask_color='white')
+    return apply_mask
+
+def showFigure(srcImage, res):
+    img, _, _ = pcv.readimage(srcImage, mode="rgba")
+    apply_mask = get_mask_transform(img=img)
+    fig = plt.figure(figsize=(8, 4))
+    fig.suptitle(f'Class predicted : {res["pred_class"]}', fontsize=16)
+    fig.add_subplot(1, 2, 1)
+    plt.imshow(img)
+    fig.add_subplot(1, 2, 2)
+    plt.imshow(apply_mask)
+    plt.tight_layout()
+    plt.savefig(f"prediction.png")
 
 def main():
 
@@ -111,17 +134,17 @@ def main():
 
     if str(image_path).find("Apple"):
         idx_to_class = {
-            '0':"Apple_Black_rot",
-            '1':"Apple_healthy",
-            '2':"Apple_rust",
-            '3':"Apple_scab",
+            0:"Apple_Black_rot",
+            1:"Apple_healthy",
+            2:"Apple_rust",
+            3:"Apple_scab",
         }
     if str(image_path).find("Grape"):
         idx_to_class = {
-            '0':"Grape_Black_rot",
-            '1':"Grape_Esca",
-            '2':"Grape_healthy",
-            '3':"Grape_spot",
+            0:"Grape_Black_rot",
+            1:"Grape_Esca",
+            2:"Grape_healthy",
+            3:"Grape_spot",
         }
 
     num_classes = len(idx_to_class)
@@ -149,7 +172,7 @@ def main():
 
         image_paths = [image_path]
         test_results = predict(model, device, image_paths, idx_to_class)
-
+        showFigure(image_path, test_results[0])
         # show the diff before after
 
     elif image_path.is_dir():
