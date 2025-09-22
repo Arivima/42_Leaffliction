@@ -140,7 +140,7 @@ class LeaflictionData:
         logger.info(f"Data loaders available : {self.loaders.keys()}")
 
         # save a sample of the transformed dataset used for training
-        # self.save_dataset_transfo()
+        self.save_dataset_transfo()
 
         # provides a descriptive dataset analysis
         if do_preproc:
@@ -167,12 +167,10 @@ class LeaflictionData:
         self.class_count_idx: dict[int, int] = {}
         self.class_count_name: dict[str, int] = {}
 
-        self.mean = [
-            0.7165,
-            0.7616,
-            0.6708,
-        ]  # written in hard from previous computation
-        self.std = [0.3109, 0.2628, 0.3583]  # written in hard from previous computation
+        # written in hard from previous computation
+        self.mean = [0.7165, 0.7616, 0.6708]
+        self.std = [0.3109, 0.2628, 0.3583]
+
         self.preproc_pipeline = None
 
     def _init_paths(self):
@@ -712,8 +710,16 @@ class LeaflictionData:
 
     def save_dataset_transfo(self):
         """Saves a sample of the transformed dataset for reference"""
+
+        def denormalize(img, mean, std):
+            """Undo normalization applied by transforms.Normalize"""
+            mean = torch.tensor(mean).view(3, 1, 1)
+            std = torch.tensor(std).view(3, 1, 1)
+            return img * std + mean
+
         project_root = self.augmented_dir.parent.parent  # 42_Leafliction
         dataset_name = self.augmented_dir.name  # Apple
+
         outdir = Path(
             project_root / "samples" / "transformed" / dataset_name
         )  # 42_Leafliction/samples/transformed/Apple
@@ -723,8 +729,11 @@ class LeaflictionData:
             if i < 5:
                 for j in range(X.size(0)):
                     if j < 5:
+                        img = denormalize(X[j], self.mean, self.std).clamp(
+                            0, 1
+                        )  # back to [0,1]
                         save_image(
-                            X[j],
+                            img,
                             f"{outdir}/{i * self.loaders['train'].batch_size + j}_class{y[j].item()}.png",
                         )
 
