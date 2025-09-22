@@ -505,8 +505,7 @@ class LeaflictionData:
                 CustomTransform(),
                 transforms.Resize((256, 256)),  # enforced in case of surprise even though all images are that size
                 transforms.ToTensor(),  # PIL.Image.Image to torch.Tensor
-                # transforms.Normalize(mean=self.mean.tolist(), std=self.std.tolist())
-                transforms.Normalize([0.7165, 0.7616, 0.6708], [0.3109, 0.2628, 0.3583]) # computed on dataset
+                transforms.Normalize(mean=[0.7165, 0.7616, 0.6708], std=[0.3109, 0.2628, 0.3583]) # mean / std computed on dataset
             ]
         )
 
