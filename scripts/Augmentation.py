@@ -39,6 +39,8 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 
 from scripts.utils.logger import get_logger
@@ -381,6 +383,7 @@ def display_images(
             raise ValueError(f"Not inside '{name}': {p}")
 
         project_root = find_project_root(Path(os.getcwd()))  # 42_Leafliction
+        dataset_name = "None"
         if "Apple" in filename:
             dataset_name = "Apple"
         elif "Grape" in filename:
@@ -447,7 +450,7 @@ def main():
         augmented_images = augment_image(original_image=image)
 
         if not args.no_display:
-            display_images(augmented_images)
+            display_images(augmented_images, save=True, display=False)
 
         save_images(original_image_path=image_path, images=augmented_images)
         return
