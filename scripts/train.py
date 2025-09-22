@@ -269,7 +269,7 @@ class LeaflictionExperiment:
                     break
 
     @staticmethod
-    def _evaluate_model(self, model, dataloader, split, loss_fn=None) -> dict[str, Any]:
+    def _evaluate_model(model, dataloader, split, loss_fn=None) -> dict[str, Any]:
         """
         Model evaluation using dataloader
         Returns dict with accuracy, loss (if provided), y_true, y_pred.

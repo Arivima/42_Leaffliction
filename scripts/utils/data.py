@@ -31,7 +31,6 @@ from PIL import Image
 logger = get_logger(__name__)
 
 
-COUNT = 0
 
 class CustomTransform(torch.nn.Module):
     def __init__(self):
@@ -44,9 +43,6 @@ class CustomTransform(torch.nn.Module):
         mask = pcv.fill_holes(bin_img=b_thresh)
         apply_mask = pcv.apply_mask(img=img, mask=mask, mask_color='white')
         maskPil = Image.fromarray(apply_mask)
-        if COUNT == 0:
-            maskPil.show()
-        COUNT = 1
         return maskPil
 
 
@@ -179,7 +175,7 @@ class LeaflictionData:
 
         self.mean = [0.7165, 0.7616, 0.6708]    # written in hard from previous computation
         self.std = [0.3109, 0.2628, 0.3583]     # written in hard from previous computation
-
+        self.preproc_pipeline = None
 
     def _init_paths(self):
         """
@@ -501,7 +497,7 @@ class LeaflictionData:
         return dataset
 
     @staticmethod
-    def get_preproc_pipeline(self):
+    def get_preproc_pipeline():
         # transforms : used to preprocess and augment data
         # transforms.Compose : chains several transforms into a preproc pipeline
         return transforms.Compose(
@@ -509,8 +505,8 @@ class LeaflictionData:
                 CustomTransform(),
                 transforms.Resize((256, 256)),  # enforced in case of surprise even though all images are that size
                 transforms.ToTensor(),  # PIL.Image.Image to torch.Tensor
-                transforms.Normalize(mean=self.mean.tolist(), std=self.std.tolist())
-                # transforms.Normalize([0.7165, 0.7616, 0.6708], [0.3109, 0.2628, 0.3583]) # computed on dataset
+                # transforms.Normalize(mean=self.mean.tolist(), std=self.std.tolist())
+                transforms.Normalize([0.7165, 0.7616, 0.6708], [0.3109, 0.2628, 0.3583]) # computed on dataset
             ]
         )
 
