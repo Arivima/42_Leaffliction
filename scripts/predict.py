@@ -86,6 +86,7 @@ def main():
         help="Path to an image or a folder containing images for prediction",
     )
     args = parser.parse_args()
+    print(args)
 
     # initialization
     image_path = Path(args.path).resolve() 
@@ -94,14 +95,19 @@ def main():
         sys.exit(1)
 
     project_root = LeaflictionData.find_project_root(p=image_path)
+    logger.info(f"project_root {project_root}")
+
     best_model_dir = project_root / "best_model"
     if not best_model_dir.exists():
         print(f"Best model dir '{best_model_dir}' not found")
         sys.exit(1)
 
+
     data = LeaflictionData(original_dir=image_path)
     idx_to_class = data.idx_to_class
     num_classes = len(idx_to_class)
+    logger.info(f"num_classes {num_classes}")
+    logger.info(f"idx_to_class {idx_to_class}")
 
     # Device
     device = (
@@ -120,23 +126,46 @@ def main():
 
     # Predict
     if image_path.is_file():
+        logger.info(f"Running predict on a single image {image_path}")
+
         image_paths = [image_path]
         test_results = predict(model, device, image_paths, idx_to_class)
 
         # show the diff before after
 
     elif image_path.is_dir():
+        logger.info(f"Running predict on the test set in the directory {image_path}")
 
         # predict
         test_results = LeaflictionExperiment._evaluate_model(
             model=model, dataloader=data.loaders["test"], split="test"
         )
 
+        # best_model_dir  /Users/a.villa.massone/Code/42/42_Leaffliction/best_model/
+        # best_model_path /Users/a.villa.massone/Code/42/42_Leaffliction/best_model/best_model_epoch_1 .pt
+        # csv_path        /Users/a.villa.massone/Code/42/42_Leaffliction/best_model/best_model_epoch_1 _predictions.csv
+        # csv_path        /Users/a.villa.massone/Code/42/42_Leaffliction/best_model/best_model_epoch_1 _confusion_matrices.png
+        # csv_path        /Users/a.villa.massone/Code/42/42_Leaffliction/best_model/best_model_epoch_1 _classification_report
+
+        out_dir = best_model_dir
+        csv_filename = str(best_model_path.with_suffix("").name) + "_predictions.csv"
+        cm_filename = str(best_model_path.with_suffix("").name) + "_confusion_matrices.png"
+        cr_filename = str(best_model_path.with_suffix("").name) + "_classification_report"
+
+        logger.info(f"best_model_dir {best_model_dir}")
+        logger.info(f"best_model_path {best_model_path}")
+        logger.info(f"out_dir {out_dir}")
+        logger.info(f"csv_filename {csv_filename}")
+        logger.info(f"cm_filename {cm_filename}")
+        logger.info(f"cr_filename {cr_filename}")
+
         # Save CSV
         df = pd.DataFrame(test_results)
-        csv_path = best_model_path.parent / best_model_path.name + "_predictions.csv"
+        df = df[['y_true', 'y_pred']]
+        df['image'] = [i[0] for i in data.datasets['test'].imgs]
+        csv_path = out_dir / csv_filename
         df.to_csv(csv_path, index=False)
-        logger.info(f"Saved predictions to {csv_path}")
+        logger.info(f"Saved predictions to :\n{csv_path}")
 
         # Export performance metrics
         if image_path.is_dir():
@@ -144,13 +173,13 @@ def main():
                 test_results=test_results,
                 out_dir=best_model_path.parent,
                 class_names=list(idx_to_class.values()),
-                filename=best_model_path.name + "_confusion_matrices.png"
+                filename=cm_filename
             )
             export_classification_reports(
                 test_results=test_results,
                 out_dir=best_model_path.parent,
                 class_names=list(idx_to_class.values()),
-                filename=best_model_path.name + "_classification_report"
+                base_filename=cr_filename
             )
 
     else:
