@@ -2,14 +2,19 @@
 train_plots.py
 """
 
+import csv
 from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
-import csv
 import pandas as pd
-from sklearn.metrics import classification_report
-from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
+from sklearn.metrics import (
+    ConfusionMatrixDisplay,
+    classification_report,
+    confusion_matrix,
+)
 from torchinfo import summary
+
 from scripts.utils.logger import get_logger
 
 logger = get_logger(__name__)

@@ -27,13 +27,17 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.colors import DEFAULT_PLOTLY_COLORS
 from plotly.subplots import make_subplots
+
 from scripts.utils.logger import get_logger
 
 PLOT_OUTPUT_DIR = "plots"
 
 logger = get_logger(__name__)
 
-def plot_multiple_distributions(plot_title:str, distributions: list[tuple[pd.DataFrame, str]]) -> None:
+
+def plot_multiple_distributions(
+    plot_title: str, distributions: list[tuple[pd.DataFrame, str]]
+) -> None:
     """
     Generates and displays multiple combined pie+bar charts, one per dataset.
     Up to 5 datasets. Displays inline (does not save images).

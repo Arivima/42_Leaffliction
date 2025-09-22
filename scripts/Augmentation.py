@@ -39,6 +39,7 @@ import sys
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
+
 from scripts.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -62,7 +63,7 @@ def open_image(image_path: str) -> np.ndarray:
     if not is_valid_image_path(path=image_path):
         raise ValueError("Invalid file extension.")
 
-    if not is_safe_path('images', image_path):
+    if not is_safe_path("images", image_path):
         raise ValueError(f"Image path '{image_path}' is outside allowed directory.")
 
     if not os.path.isfile(image_path):
@@ -232,6 +233,7 @@ def resize_image(image: np.ndarray, sx: int = 0.5, sy: int = 0.5) -> np.ndarray:
     # logger.info(f'resize_image {resized.shape}')
     return resized
 
+
 def distort_image(image: np.ndarray, k: float = 0.5) -> np.ndarray:
     """
     Apply barrel distortion using distortion map and cv2.remap.
@@ -258,7 +260,6 @@ def distort_image(image: np.ndarray, k: float = 0.5) -> np.ndarray:
     )
     # logger.info(f'distort_image {distorted.shape}')
     return distorted
-
 
 
 def blur_image(image: np.ndarray, ksize: int = 5) -> np.ndarray:
@@ -344,7 +345,9 @@ def augment_image(original_image: np.ndarray) -> dict:
     return augmented_images
 
 
-def display_images(images: dict, save:bool=False, display:bool=True, filename:str="sample.jpg"):
+def display_images(
+    images: dict, save: bool = False, display: bool = True, filename: str = "sample.jpg"
+):
     """Displays all augmented images side by side in one row"""
     # logger.info("Displaying augmented images")
     n = len(images)
@@ -368,7 +371,7 @@ def display_images(images: dict, save:bool=False, display:bool=True, filename:st
 
     plt.tight_layout()
 
-    output_dir = 'samples'
+    output_dir = "samples"
     if save:
         os.makedirs(output_dir, exist_ok=True)
         save_path = os.path.join(output_dir, filename)
@@ -379,7 +382,6 @@ def display_images(images: dict, save:bool=False, display:bool=True, filename:st
         plt.show()
     else:
         plt.close()
-
 
 
 def save_images(original_image_path: str, images: dict):
@@ -394,7 +396,7 @@ def save_images(original_image_path: str, images: dict):
     os.makedirs(dir_path, exist_ok=True)
 
     for key, image in images.items():
-        if key != 'original_image':
+        if key != "original_image":
             filename = f"{base_name}_{key}{ext}"
             image_path = os.path.join(dir_path, filename)
 
@@ -403,7 +405,8 @@ def save_images(original_image_path: str, images: dict):
                 logger.error(f"Could not save image '{filename}'")
                 raise IOError(f"cv2.imwrite failed to save '{image_path}'")
             # else:
-                # logger.info(f"Saved '{filename}'")
+            # logger.info(f"Saved '{filename}'")
+
 
 def parse_args() -> argparse.Namespace:
     """Uses `argparse` to handle the arguments : image_path, output_dir"""
@@ -417,7 +420,6 @@ def parse_args() -> argparse.Namespace:
 
 def main():
     try:
-
         # logger.info("Starting Augmentation.py program")
 
         args = parse_args()
@@ -445,6 +447,7 @@ def main():
     except Exception as e:
         logger.exception(f"Unexpected error: {type(e).__name__}: {e}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

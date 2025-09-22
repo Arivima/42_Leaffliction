@@ -1,6 +1,7 @@
 # logger.py
 import logging
 
+
 def get_logger(name: str = __name__) -> logging.Logger:
     """Config for logger"""
     logger = logging.getLogger(name)
@@ -9,7 +10,7 @@ def get_logger(name: str = __name__) -> logging.Logger:
         handler = logging.StreamHandler()
         formatter = logging.Formatter(
             "[%(asctime)s] [%(levelname)s] %(name)s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
+            datefmt="%Y-%m-%d %H:%M:%S",
         )
         handler.setFormatter(formatter)
         logger.addHandler(handler)

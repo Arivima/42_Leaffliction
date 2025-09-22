@@ -1,13 +1,20 @@
 """
 predict.py
+
+!Requires that a model be saved in "42_Leaffliction/best_model"
+
 - Takes as arg the path to the image on which to run prediction
-- Loads the trained model
+- Loads the trained model from 42_Leaffliction/best_model
+
+If given a file path:
 - displays original image and transformed image side by side
 - displays the predicted category
 
 If given a folder path:
-- generates predictions for the whole folder, saved in a csv
-- exports performance metrics on those predictions
+- Loads the test dataset in that folder
+- generates predictions for the whole test folder
+- exports a .csv of predictions with image paths
+- exports a classification report and a confusion matrix
 
 Usage:
 $> ./predict.py ./images_augmented/Apple_test/apple_healthy/image (9).JPG
@@ -22,14 +29,15 @@ import pandas as pd
 import torch
 from PIL import Image
 
+from scripts.train import LeaflictionExperiment
 from scripts.utils.data import LeaflictionData
 from scripts.utils.logger import get_logger
 from scripts.utils.model import LeaflictionCNN
-from scripts.train import LeaflictionExperiment
 from scripts.utils.train_plots import (
     export_classification_reports,
-    export_confusion_matrices
+    export_confusion_matrices,
 )
+
 logger = get_logger(__name__)
 
 
@@ -76,12 +84,11 @@ def predict(model, device, image_paths, idx_to_class) -> list[dict]:
 
 
 def main():
-    # si image folder path auto ?
 
     # arguments
     parser = argparse.ArgumentParser(description="Leafliction prediction script")
     parser.add_argument(
-        "path",         #./images/Apple"
+        "path",  # ./images/Apple"
         type=str,
         help="Path to an image or a folder containing images for prediction",
     )
@@ -89,7 +96,7 @@ def main():
     print(args)
 
     # initialization
-    image_path = Path(args.path).resolve() 
+    image_path = Path(args.path).resolve()
     if not image_path.exists():
         print(f"Image file/folder'{image_path}' not found")
         sys.exit(1)
@@ -101,7 +108,6 @@ def main():
     if not best_model_dir.exists():
         print(f"Best model dir '{best_model_dir}' not found")
         sys.exit(1)
-
 
     data = LeaflictionData(original_dir=image_path)
     idx_to_class = data.idx_to_class
@@ -141,16 +147,21 @@ def main():
             model=model, dataloader=data.loaders["test"], split="test"
         )
 
-        # best_model_dir  /Users/a.villa.massone/Code/42/42_Leaffliction/best_model/
-        # best_model_path /Users/a.villa.massone/Code/42/42_Leaffliction/best_model/best_model_epoch_1 .pt
-        # csv_path        /Users/a.villa.massone/Code/42/42_Leaffliction/best_model/best_model_epoch_1 _predictions.csv
-        # csv_path        /Users/a.villa.massone/Code/42/42_Leaffliction/best_model/best_model_epoch_1 _confusion_matrices.png
-        # csv_path        /Users/a.villa.massone/Code/42/42_Leaffliction/best_model/best_model_epoch_1 _classification_report
+        # Examples :
+        # best_model_dir    /Users/a.villa.massone/Code/42/42_Leaffliction/best_model/
+        # best_model_path   /Users/a.villa.massone/Code/42/42_Leaffliction/best_model/best_model_epoch_1.pt
+        # csv               /Users/a.villa.massone/Code/42/42_Leaffliction/best_model/best_model_epoch_1_predictions.csv
+        # cm                /Users/a.villa.massone/Code/42/42_Leaffliction/best_model/best_model_epoch_1_confusion_matrices.png
+        # cr                /Users/a.villa.massone/Code/42/42_Leaffliction/best_model/best_model_epoch_1_classification_report
 
         out_dir = best_model_dir
         csv_filename = str(best_model_path.with_suffix("").name) + "_predictions.csv"
-        cm_filename = str(best_model_path.with_suffix("").name) + "_confusion_matrices.png"
-        cr_filename = str(best_model_path.with_suffix("").name) + "_classification_report"
+        cm_filename = (
+            str(best_model_path.with_suffix("").name) + "_confusion_matrices.png"
+        )
+        cr_filename = (
+            str(best_model_path.with_suffix("").name) + "_classification_report"
+        )
 
         logger.info(f"best_model_dir {best_model_dir}")
         logger.info(f"best_model_path {best_model_path}")
@@ -161,8 +172,8 @@ def main():
 
         # Save CSV
         df = pd.DataFrame(test_results)
-        df = df[['y_true', 'y_pred']]
-        df['image'] = [i[0] for i in data.datasets['test'].imgs]
+        df = df[["y_true", "y_pred"]]
+        df["image"] = [i[0] for i in data.datasets["test"].imgs]
         csv_path = out_dir / csv_filename
         df.to_csv(csv_path, index=False)
         logger.info(f"Saved predictions to :\n{csv_path}")
@@ -173,21 +184,18 @@ def main():
                 test_results=test_results,
                 out_dir=best_model_path.parent,
                 class_names=list(idx_to_class.values()),
-                filename=cm_filename
+                filename=cm_filename,
             )
             export_classification_reports(
                 test_results=test_results,
                 out_dir=best_model_path.parent,
                 class_names=list(idx_to_class.values()),
-                base_filename=cr_filename
+                base_filename=cr_filename,
             )
 
     else:
         print(f"Invalid input path: {image_path}")
         sys.exit(1)
-
-
-
 
 
 if __name__ == "__main__":

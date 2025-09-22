@@ -10,7 +10,7 @@ train.py
 ## What it does:
 - fetches images in its subdirectories.
 - increase/modify those images
-- separate dataset in training and testing sets
+- separate dataset in training, validation and testing sets
 - learn the characteristics of the diseases specified in the leaf.
 - save learnings and increased/modified dataset in a .zip
 
@@ -64,8 +64,8 @@ class LeaflictionExperiment:
     LeaflictionExperiment is class that runs and tracks a training experiment
     It will load a LeaflictionData data class that preprocess and augment the raw data
     It will load and train a LeaflictionCNN model on train/val sets
-    It will evaluate the model on the test set and export performance metrics, 
-      classification reports, confusion matrices and learning curves 
+    It will evaluate the model on the test set and export performance metrics,
+      classification reports, confusion matrices and learning curves
     It will create a zip archive with the best weights, the experiment data and the augmented dataset
     It has the following public methods:
         - load_data
@@ -75,8 +75,10 @@ class LeaflictionExperiment:
         - track_experiment
         - create_archive_zip
     """
+
     def __init__(self):
         """Class initialization with user defined args"""
+
         def parse_args() -> argparse.Namespace:
             """Uses `argparse` to handle the arguments : image_path, output_dir"""
             parser = argparse.ArgumentParser(
@@ -174,6 +176,7 @@ class LeaflictionExperiment:
         records history for learning curves
         includes early stopping with user sedfined patience
         """
+
         def make_train_fn():
             """returns a function with an epoch counter"""
             counter = count(1)

@@ -3,33 +3,29 @@ data.py
 - LeaflictionData class
 """
 
+import json
 import os
 import random
 import shutil
 from collections import Counter, defaultdict
 from pathlib import Path
-import json
 
+import numpy as np
 import pandas as pd
 import torch
+from PIL import Image
+from plantcv import plantcv as pcv
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import datasets, transforms
 from torchvision.datasets import ImageFolder
-from tqdm import tqdm
 from torchvision.utils import save_image
-
-from scripts.utils.logger import get_logger
+from tqdm import tqdm
 
 from scripts.Augmentation import augment_image, display_images, open_image, save_images
 from scripts.Distribution import plot_multiple_distributions
-
-
-import numpy as np
-from plantcv import plantcv as pcv      
-from PIL import Image
+from scripts.utils.logger import get_logger
 
 logger = get_logger(__name__)
-
 
 
 class CustomTransform(torch.nn.Module):
@@ -38,10 +34,10 @@ class CustomTransform(torch.nn.Module):
 
     def forward(self, img):
         img = np.array(img)
-        b = pcv.rgb2gray_lab(rgb_img=img, channel='b')
-        b_thresh = pcv.threshold.otsu(gray_img=b, object_type='light')
+        b = pcv.rgb2gray_lab(rgb_img=img, channel="b")
+        b_thresh = pcv.threshold.otsu(gray_img=b, object_type="light")
         mask = pcv.fill_holes(bin_img=b_thresh)
-        apply_mask = pcv.apply_mask(img=img, mask=mask, mask_color='white')
+        apply_mask = pcv.apply_mask(img=img, mask=mask, mask_color="white")
         maskPil = Image.fromarray(apply_mask)
         return maskPil
 
@@ -59,7 +55,7 @@ class LeaflictionData:
 
     - If data has already been processed once, set force_preproc to True to force processing
     - If force processing is activated, existing processed data will be deleted, user confirmation is required
-    - PyTorch has two primitives to work with data: torch.utils.data.DataLoader and torch.utils.data.Dataset. 
+    - PyTorch has two primitives to work with data: torch.utils.data.DataLoader and torch.utils.data.Dataset.
         Dataset stores the samples and their corresponding labels, and DataLoader wraps an iterable around the Dataset.
         DataLoader supports automatic batching, sampling, shuffling and multiprocess data loading
         We are using Dataset type : torchvision.datasets.ImageFolder
@@ -117,7 +113,7 @@ class LeaflictionData:
             self.original_dir: Path = p if p.is_absolute() else p.resolve(strict=True)
         except Exception as e:
             raise ValueError("Invalid attribute 'original_dir'", e)
-        
+
         self.force_preproc: bool = force_preproc
         self.test_split: int = test_split
         self.val_split: int = val_split
@@ -151,8 +147,6 @@ class LeaflictionData:
             logger.info("Running descriptive analysis on processed data")
             self._run_data_analysis()
 
-
-
     def _init_attributes(self):
         """initializes all attributes - full list of class attributes"""
         self.original_dir: str | Path = None
@@ -173,8 +167,12 @@ class LeaflictionData:
         self.class_count_idx: dict[int, int] = {}
         self.class_count_name: dict[str, int] = {}
 
-        self.mean = [0.7165, 0.7616, 0.6708]    # written in hard from previous computation
-        self.std = [0.3109, 0.2628, 0.3583]     # written in hard from previous computation
+        self.mean = [
+            0.7165,
+            0.7616,
+            0.6708,
+        ]  # written in hard from previous computation
+        self.std = [0.3109, 0.2628, 0.3583]  # written in hard from previous computation
         self.preproc_pipeline = None
 
     def _init_paths(self):
@@ -184,13 +182,17 @@ class LeaflictionData:
         - self.data_dirs
         """
         # Set augmented directory
-        current = self.original_dir                     # ex '42_Leaffliction/images/Apple"
-        parent = current.parent                         # '42_Leaffliction/images'
-        grandparent = parent.parent                     # '42_Leaffliction'
-        new_parent_name = f"{parent.name}_augmented"    # '42_Leaffliction/images_augmented'
+        current = self.original_dir  # ex '42_Leaffliction/images/Apple"
+        parent = current.parent  # '42_Leaffliction/images'
+        grandparent = parent.parent  # '42_Leaffliction'
+        new_parent_name = (
+            f"{parent.name}_augmented"  # '42_Leaffliction/images_augmented'
+        )
 
-        if parent.name != 'images' or grandparent.name != '42_Leaffliction':
-            raise ValueError(f"Invalid attribute 'original_dir' : {current}. Dataset should be located in the 'images/' directory.")
+        if parent.name != "images" or grandparent.name != "42_Leaffliction":
+            raise ValueError(
+                f"Invalid attribute 'original_dir' : {current}. Dataset should be located in the 'images/' directory."
+            )
 
         self.augmented_dir = Path(grandparent / new_parent_name / current.name)
 
@@ -204,7 +206,6 @@ class LeaflictionData:
 
         # Set train raw directory
         self.data_dir_train_raw = Path(base_dir / f"{base_name}_train_raw")
-
 
     def _clean_directories(self):
         """removes existing directories at the provided path"""
@@ -226,7 +227,6 @@ class LeaflictionData:
         else:
             logger.info("Ignoring force_preproc flag. Resuming.")
 
-
     def _load(self):
         """
         - loads:
@@ -243,7 +243,6 @@ class LeaflictionData:
         self.datasets["val"] = self._load_image_folder(self.data_dirs["val"])
         self.datasets["test"] = self._load_image_folder(self.data_dirs["test"])
         self._set_class_count()
-
 
     def _preprocess(self):
         """
@@ -279,9 +278,9 @@ class LeaflictionData:
         self.datasets["train"] = self._load_image_folder(self.data_dirs["train"])
         self._set_class_count()
 
-
     def _format_metadata(self):
         """Creates a json with metadata for debugging purposes"""
+
         def _s(x):
             return str(x) if x is not None else None
 
@@ -295,15 +294,25 @@ class LeaflictionData:
                 },
                 "flags": {
                     "force_preproc": bool(self.force_preproc),
-                    "test_split": float(self.test_split) if self.test_split is not None else None,
-                    "val_split": float(self.val_split) if self.val_split is not None else None,
-                    "batch_size": int(self.batch_size) if self.batch_size is not None else None,
+                    "test_split": float(self.test_split)
+                    if self.test_split is not None
+                    else None,
+                    "val_split": float(self.val_split)
+                    if self.val_split is not None
+                    else None,
+                    "batch_size": int(self.batch_size)
+                    if self.batch_size is not None
+                    else None,
                 },
                 "loaded": {
                     "data_processed": self._is_preproc_ready(),
                     "original_ds": self.original_ds is not None,
-                    "datasets": {k: (k in self.datasets) for k in ("train", "val", "test")},
-                    "loaders": {k: (k in self.loaders) for k in ("train", "val", "test")},
+                    "datasets": {
+                        k: (k in self.datasets) for k in ("train", "val", "test")
+                    },
+                    "loaders": {
+                        k: (k in self.loaders) for k in ("train", "val", "test")
+                    },
                 },
                 "classes": {
                     "num_classes": len(self.idx_to_class) if self.idx_to_class else 0,
@@ -312,12 +321,11 @@ class LeaflictionData:
             }
         }
         return payload
-        
+
     def __repr__(self):
         """overrides default implementation for debugging purposes"""
         payload = self._format_metadata()
         return json.dumps(payload, indent=4, sort_keys=False, ensure_ascii=False)
-
 
     # def _is_safe_path(self, path: str) -> bool:
     #     """
@@ -337,7 +345,6 @@ class LeaflictionData:
     #                 return True
     #     return False
 
-
     @staticmethod
     def find_project_root(p: Path, name="42_Leaffliction") -> Path:
         p = p.resolve()
@@ -345,7 +352,6 @@ class LeaflictionData:
             if a.name == name:
                 return a
         raise ValueError(f"Not inside '{name}': {p}")
-
 
     def _is_preproc_ready(self) -> bool:
         """returns True if all directories are created and exist"""
@@ -419,7 +425,6 @@ class LeaflictionData:
             if not dst_file.exists():
                 shutil.copy(file, destination_dir)
 
-
     def _load_image_folder(self, data_dir: Path) -> ImageFolder:
         """
         Loads a dataset and applies data processing (uniform size, cast to tensors)
@@ -428,22 +433,27 @@ class LeaflictionData:
         Returns
             (ImageFolder) : Loaded dataset
         """
+
         def _compute_image_normalization():
             dataset = datasets.ImageFolder(
-                root=self.data_dirs['train'],
-                transform=transforms.Compose([
-                    CustomTransform(),
-                    transforms.Resize((224, 224)),
-                    transforms.ToTensor()
-                ])
+                root=self.data_dirs["train"],
+                transform=transforms.Compose(
+                    [
+                        CustomTransform(),
+                        transforms.Resize((224, 224)),
+                        transforms.ToTensor(),
+                    ]
+                ),
             )
-            logger.info(f"Loaded '{self.data_dirs['train']}' to compute mean and std for normalization")
+            logger.info(
+                f"Loaded '{self.data_dirs['train']}' to compute mean and std for normalization"
+            )
 
             loader = DataLoader(dataset, batch_size=64, shuffle=False, num_workers=4)
 
             # Compute mean and std
-            mean = 0.
-            std = 0.
+            mean = 0.0
+            std = 0.0
             total_images = 0
 
             for X, _ in tqdm(loader, desc="Computing ..."):
@@ -452,9 +462,9 @@ class LeaflictionData:
                 # Flatten each image: (batch_size, channels, height*width)
                 X = X.view(batch_samples, X.size(1), -1)
                 # Mean across spatial dims → shape (batch_size, channels)
-                batch_mean = X.mean(2)  
+                batch_mean = X.mean(2)
                 # Std across spatial dims → shape (batch_size, channels)
-                batch_std = X.std(2)    
+                batch_std = X.std(2)
                 # Sum over the batch → shape (channels,)
                 mean += batch_mean.sum(0)
                 std += batch_std.sum(0)
@@ -503,12 +513,15 @@ class LeaflictionData:
         return transforms.Compose(
             [
                 CustomTransform(),
-                transforms.Resize((256, 256)),  # enforced in case of surprise even though all images are that size
+                transforms.Resize(
+                    (256, 256)
+                ),  # enforced in case of surprise even though all images are that size
                 transforms.ToTensor(),  # PIL.Image.Image to torch.Tensor
-                transforms.Normalize(mean=[0.7165, 0.7616, 0.6708], std=[0.3109, 0.2628, 0.3583]) # mean / std computed on dataset
+                transforms.Normalize(
+                    mean=[0.7165, 0.7616, 0.6708], std=[0.3109, 0.2628, 0.3583]
+                ),  # mean / std computed on dataset
             ]
         )
-
 
     def _split_dataset(self):
         """
@@ -617,14 +630,10 @@ class LeaflictionData:
             sampler=train_sampler,
         )
         self.loaders["test"] = DataLoader(
-            self.datasets["test"], 
-            batch_size=self.batch_size, 
-            shuffle=False
+            self.datasets["test"], batch_size=self.batch_size, shuffle=False
         )
         self.loaders["val"] = DataLoader(
-            self.datasets["val"], 
-            batch_size=self.batch_size, 
-            shuffle=False
+            self.datasets["val"], batch_size=self.batch_size, shuffle=False
         )
 
     def _run_data_analysis(self):
@@ -646,21 +655,27 @@ class LeaflictionData:
             df = pd.DataFrame(data).fillna(0).astype(int)
             df["total"] = df[["train", "val", "test"]].sum(axis=1)
             df.loc["total"] = df.sum(axis=0)
-            df.index.name = 'classes'
+            df.index.name = "classes"
             return df
 
-        def export_df(df, path : str | Path):
+        def export_df(df, path: str | Path):
             """Export a DataFrame to a Markdown table file."""
-            df_formatted = df.map(lambda x: f"{x:,}" if isinstance(x, (int, float)) else x)
+            df_formatted = df.map(
+                lambda x: f"{x:,}" if isinstance(x, (int, float)) else x
+            )
             md_str = df_formatted.to_markdown(index=True)
             path.write_text(md_str)
-            
-        def export_metadata(self, path : str | Path):
+
+        def export_metadata(self, path: str | Path):
             """Export metadata to a JSON file"""
             payload = json.loads(self.__repr__())
-            with open(path, 'w', encoding='utf-8',) as f:
+            with open(
+                path,
+                "w",
+                encoding="utf-8",
+            ) as f:
                 json.dump(payload, f, ensure_ascii=False, indent=4)
-            
+
         def get_count_df(
             class_count_name: dict[str, dict[str, int]], col_name: str
         ) -> pd.DataFrame:
@@ -672,7 +687,6 @@ class LeaflictionData:
             df_split.rename(columns={col_name: "count"}, inplace=True)
             return df_split
 
-
         # export object metadata as a json
         metadata_path = Path(f"plots/_{self.original_dir.name}_metadata.json")
         metadata_path.parent.mkdir(parents=True, exist_ok=True)
@@ -682,7 +696,7 @@ class LeaflictionData:
         # export dataset distribution
         data = get_data()
         df = get_df(data)
-        df_path=Path(f"plots/{self.original_dir.name}_distribution.md")
+        df_path = Path(f"plots/{self.original_dir.name}_distribution.md")
         export_df(df, path=df_path)
         logger.info(f"Exported data distribution at : {df_path}")
 
@@ -698,19 +712,21 @@ class LeaflictionData:
 
     def save_dataset_transfo(self):
         """Saves a sample of the transformed dataset for reference"""
-        project_root = self.augmented_dir.parent.parent                         # 42_Leafliction
-        dataset_name = self.augmented_dir.name                                  # Apple
-        outdir = Path(project_root / "samples" / "transformed" / dataset_name)  # 42_Leafliction/samples/transformed/Apple
+        project_root = self.augmented_dir.parent.parent  # 42_Leafliction
+        dataset_name = self.augmented_dir.name  # Apple
+        outdir = Path(
+            project_root / "samples" / "transformed" / dataset_name
+        )  # 42_Leafliction/samples/transformed/Apple
         os.makedirs(outdir, exist_ok=True)
 
         for i, (X, y) in enumerate(self.loaders["train"]):
             if i < 5:
                 for j in range(X.size(0)):
                     if j < 5:
-
-                        save_image(X[j], f"{outdir}/{i*self.loaders['train'].batch_size + j}_class{y[j].item()}.png")
-
-
+                        save_image(
+                            X[j],
+                            f"{outdir}/{i * self.loaders['train'].batch_size + j}_class{y[j].item()}.png",
+                        )
 
 
 if __name__ == "__main__":
@@ -727,7 +743,7 @@ if __name__ == "__main__":
             batch_size=32,
         )
 
-        for X, y in data.loaders['train']:
+        for X, y in data.loaders["train"]:
             print(f"Shape of X [N, C, H, W]: {X.shape}")
             print(f"Shape of y: {y.shape} {y.dtype}")
             break
