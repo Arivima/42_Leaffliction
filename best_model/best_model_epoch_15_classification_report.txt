@@ -1,13 +1,13 @@
 ===== TEST =====
                  precision    recall  f1-score   support
 
-Grape_Black_rot      0.987     0.936     0.961       235
-     Grape_Esca      0.975     0.986     0.980       276
-  Grape_healthy      0.966     1.000     0.982        84
-     Grape_spot      0.968     0.995     0.982       215
+Grape_Black_rot      0.172     0.400     0.241       125
+     Grape_Esca      0.541     0.244     0.336       328
+  Grape_healthy      0.047     0.145     0.071        55
+     Grape_spot      0.280     0.056     0.093       125
 
-       accuracy                          0.975       810
-      macro avg      0.974     0.979     0.976       810
-   weighted avg      0.976     0.975     0.975       810
+       accuracy                          0.229       633
+      macro avg      0.260     0.211     0.185       633
+   weighted avg      0.374     0.229     0.246       633
 
 
