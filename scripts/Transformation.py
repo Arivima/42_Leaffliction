@@ -23,6 +23,8 @@ import shutil
 import sys
 
 import click
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from plantcv import plantcv as pcv
@@ -217,7 +219,8 @@ def main(
         )
     try:
         if directsrc:
-            tr = ImageTransformation(directsrc, save=False)
+            os.makedirs(f"tranceformImage/", exist_ok=True)
+            tr = ImageTransformation(directsrc, outDir="tranceformImage/", save=True)
             showTransformation(
                 tr, origine, mask, gaussian, roi, analyze, pseudolandmarks, color
             )
