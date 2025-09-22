@@ -2,14 +2,19 @@
 train_plots.py
 """
 
+import csv
 from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
-import csv
 import pandas as pd
-from sklearn.metrics import classification_report
-from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
+from sklearn.metrics import (
+    ConfusionMatrixDisplay,
+    classification_report,
+    confusion_matrix,
+)
 from torchinfo import summary
+
 from scripts.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -46,7 +51,7 @@ def plot_learning_curves(
     fig.savefig(out_path, bbox_inches="tight", dpi=150)
     plt.close(fig)
 
-    logger.info(f"Saved learning curves plots to: \n- {out_path}")
+    logger.info(f"Saved learning curves plots to: \n{out_path}")
 
 
 def save_history_csv(history, out_dir):
@@ -68,7 +73,7 @@ def save_history_csv(history, out_dir):
                     history["val_acc"][i],
                 ]
             )
-    logger.info(f"Saved history to: \n- {out_path}")
+    logger.info(f"Saved history to: \n{out_path}")
 
 
 def export_classification_reports(
@@ -139,7 +144,7 @@ def export_classification_reports(
             df.to_csv(out_csv, index=True)
 
         logger.info(
-            f"Saved classification report for '{split}' to:\n- {out_txt}\n- {out_csv}"
+            f"Saved classification report for '{split}' to:\n{out_txt}\n{out_csv}"
         )
 
     for split, results in {
@@ -209,7 +214,7 @@ def export_confusion_matrices(
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
 
-    logger.info(f"Saved confusion matrices to:\n- {out_path}")
+    logger.info(f"Saved confusion matrices to:\n{out_path}")
 
 
 def export_model_architecture(
