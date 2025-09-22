@@ -403,6 +403,7 @@ class LeaflictionExperiment:
 
 
 def main():
+    start = datetime.now()
     try:
         experiment = LeaflictionExperiment()
         experiment.load_data()
@@ -411,6 +412,10 @@ def main():
         experiment.evaluate()
         experiment.track_experiment()
         experiment.create_archive_zip()
+        end = datetime.now()
+        elapsed = end - start
+        minutes, seconds = divmod(elapsed.total_seconds(), 60)
+        logger.info(f"Training time = {int(minutes)}m {int(seconds)}s")
         return
 
     except FileNotFoundError as e:
